@@ -89,8 +89,48 @@ Annotations from Red Hat free course Deploying [Containerized Applications Techn
         `$ sudo podman exec -it mysql-basic /bin/bash`
 
 
-Building Custom Container Images with Dockerfiles (and demonstration)
-Creating Basic Kubernetes and OpenShift Resources (and demonstration)
-Creating Applications with the Source-to-Image Facility (and demonstration)
-Creating Routes (and demonstration)
-Creating Applications with the OpenShift Web Console (and demonstration)
+## Building Custom Container Images with Dockerfiles (and demonstration)
+
+ - Dockerfile: recipe to create Container images
+    - Simple text file
+    - each line has an instruction and the arguments for that instruction
+    - The instructions are executed in the order they appear
+    - Each instruction in a Dockerfile creates a new layer
+
+- Sample Dockerfile
+
+    ```
+    # Comment line
+    # sets the parent image
+    FROM rhel7.3
+    # metadata
+    LABEL description="This is a custom httpd container image"
+    MAINTAINER John <john@xyz.com>
+    # execute commands
+    RUN yum install -y httpd
+    # Comunicates which port will be exposed
+    EXPOSE 80
+    # Environment variable
+    ENV LogLevel "info"
+    # put files inside container, able to put remote files, untar and unpackage files
+    ADD http://someserver.com/file.pdf /var/www/html
+    # put files inside container from the host
+    COPY ./src/ /var/www/html/
+    # especify which user will run subsequent commands
+    USER apache
+    # Container process command
+    ENTRYPOINT ["/usr/sbin/httpd"]
+    # parameters for the entrypoint
+    CMD ["-D", "FOREGROUND"]
+    ```
+
+- Building Images with Podman
+
+    `$ podman build -t NAME:TAG DIR`
+
+## Creating Basic Kubernetes and OpenShift Resources (and demonstration)
+## Creating Applications with the Source-to-Image Facility (and demonstration)
+## Creating Routes (and demonstration)
+## Creating Applications with the OpenShift Web Console (and demonstration)
+
+like i said... dockerfile is just a simple text file and each line is just going to have an instruction and the arguments for that instruction
