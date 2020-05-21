@@ -129,6 +129,64 @@ Annotations from Red Hat free course Deploying [Containerized Applications Techn
     `$ podman build -t NAME:TAG DIR`
 
 ## Creating Basic Kubernetes and OpenShift Resources (and demonstration)
+
+- Kubernetes Architecture
+    - The smallest unit manageble in Kubernates is pod.
+    - A pod consists of one or more containers
+    - Master node: provide the basic cluster functions
+    - Worker node: pods are schedule onto worker nodes by master node
+    - Controller: process that wactches resources and makes changes
+    - Services: provides access to a pool of pods
+    - Persitent Volumes: define storage areas
+    - Persistent Volumes Claims: represent a request for storage by a pod
+    - ConfigMaps and Secrets: centralized configuration that can be used by other resources
+
+- Openshift Resources
+    - Deployment Config (dc)
+    - Build Config (bc)
+    - Routes: build on top of Services
+
+- Demostration: Interacting with Openshift using oc utility
+
+    - login into openshift
+
+        `$> oc login http://cluserurl:8443`
+
+    - Creating new project (similar to the kubernetes to namespaces helps to organize resources)
+
+        `$> oc new project mysql-openshift`
+
+    - Create an app
+
+        ```
+        $> oc new-app --docker-image=registry.lab.example.com/rhscl/mysql-57-rhel7:latest \
+            --name=mysql-openshift -e MYSQL_USER=user1 -e MYSQL_PASSWORD=mypa55 -e MYSQL_DATABASE=testdb \
+            -e MYSQL_ROOT_PASSWORD=r00t --insecure-registry
+        ```
+
+    - Get the pods
+
+        ```
+        $> oc get pods
+        $> oc describe pod mysql-openshift-1-jg6bk
+        ```
+
+    - Get the service
+
+        `$> oc get svc`
+
+    - Create a route to the service
+
+        `$> oc expose svc mysql-openshift`
+        `$> oc get route`
+
+    - Connect to mysql instance from host machine
+
+        ```
+        $> oc get pods
+        $> oc port-forward mysql-openshift-1-jg6bk 3306:3306
+        ```
+
 ## Creating Applications with the Source-to-Image Facility (and demonstration)
 ## Creating Routes (and demonstration)
 ## Creating Applications with the OpenShift Web Console (and demonstration)
