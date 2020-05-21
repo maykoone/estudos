@@ -190,5 +190,3 @@ Annotations from Red Hat free course Deploying [Containerized Applications Techn
 ## Creating Applications with the Source-to-Image Facility (and demonstration)
 ## Creating Routes (and demonstration)
 ## Creating Applications with the OpenShift Web Console (and demonstration)
-
-like i said... dockerfile is just a simple text file and each line is just going to have an instruction and the arguments for that instruction
