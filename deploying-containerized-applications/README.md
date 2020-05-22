@@ -188,5 +188,31 @@ Annotations from Red Hat free course Deploying [Containerized Applications Techn
         ```
 
 ## Creating Applications with the Source-to-Image Facility (and demonstration)
+
+- S2i is an Openshift feature the allow us to take the source code and automatically create an image and deploy pods based on just the source code.
+    - Developers do not need to know Dockerfile
+
 ## Creating Routes (and demonstration)
+
+- Routes allow for network access to pods from users and applications outside the Openshift
+- Creating Routes (oc utility)
+    
+    `$> oc expose service quotebd --name quoteapp`
+
+- Demostration
+
+    ```
+    $> oc new-project route
+    $> oc new-app php:5.6~http://services.lab.example.com/php-helloworld
+    $> oc get pods
+    $> oc get svc
+    $> oc expose svc/php-helloworld
+    $> oc get route
+    $> oc describe route php-helloworld
+    $> curl php-helloworld-route.apps.cluster.lab.example.com
+    $> oc delete route/php-helloworld
+    $> oc expose svc/php-helloworld --name=xyz
+    $> curl xyz-route.apps.cluster.lab.example.com
+    ```
+
 ## Creating Applications with the OpenShift Web Console (and demonstration)
