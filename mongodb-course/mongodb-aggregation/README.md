@@ -487,3 +487,190 @@ db.movies.aggregate([
   { $limit: 1 }
 ])
 ```
+
+## `$group`
+
+```javascript
+// grouping by year and getting a count per year using the { $sum: 1 } pattern
+db.movies.aggregate([
+  {
+    "$group": {
+      "_id": "$year",
+      "numFilmsThisYear": { "$sum": 1 }
+    }
+  }
+])
+
+// grouping on the number of directors a film has, demonstrating that we have to
+// validate types to protect some expressions
+db.movies.aggregate([
+  {
+    "$group": {
+      "_id": {
+        "numDirectors": {
+          "$cond": [{ "$isArray": "$directors" }, { "$size": "$directors" }, 0]
+        }
+      },
+      "numFilms": { "$sum": 1 },
+      "averageMetacritic": { "$avg": "$metacritic" }
+    }
+  },
+  {
+    "$sort": { "_id.numDirectors": -1 }
+  }
+])
+
+// showing how to group all documents together. By convention, we use null or an
+// empty string, ""
+db.movies.aggregate([
+  {
+    "$group": {
+      "_id": null,
+      "count": { "$sum": 1 }
+    }
+  }
+])
+
+```
+
+## accumulator operators `$min`, `$max`, `$sum`, `$avg`, `$stdDevPop`
+
+```javascript
+db.icecream_data.aggregate([
+  { "$project": { "_id": 0, "max_high": { "$max": "$trends.avg_high_tmp" } } }
+])
+
+db.icecream_data.aggregate([
+  { "$project": { "_id": 0, "min_low": { "$min": "$trends.avg_low_tmp" } } }
+])
+
+// getting the average and standard deviations of the consumer price index
+db.icecream_data.aggregate([
+  {
+    "$project": {
+      "_id": 0,
+      "average_cpi": { "$avg": "$trends.icecream_cpi" },
+      "cpi_deviation": { "$stdDevPop": "$trends.icecream_cpi" }
+    }
+  }
+])
+
+// using the $sum expression to get total yearly sales
+db.icecream_data.aggregate([
+  {
+    "$project": {
+      "_id": 0,
+      "yearly_sales (millions)": { "$sum": "$trends.icecream_sales_in_millions" }
+    }
+  }
+])
+
+```
+
+Lab: for all films that won at least 1 Oscar, calculate the standard deviation, highest, lowest, and average imdb.rating
+
+```javascript
+db.movies.aggregate([
+  { 
+    $match: { 
+      awards: /Won \d{1,2} Oscars?/
+    }
+  }, 
+  { 
+    $group: {
+      _id: null,
+      highest_rating: { $max: "$imdb.rating"},
+      lowest_rating: {$min: "$imdb.rating"},
+      average_rating: {$avg: "$imdb.rating"},
+      deviation: {$stdDevSamp: "$imdb.rating"}
+    }
+  }
+])
+
+```
+
+## `$unwind`
+
+```javascript
+// sample schema
+{ "year" : 2012, "imdb" : { "rating" : 7.2, "votes" : 127, "id" : 2244376 }, "genres" : [ "Drama" ] }
+{ "year" : 2013, "imdb" : { "rating" : 6.5, "votes" : 2338, "id" : 2992146 }, "genres" : [ "Action", "Adventure", "Drama" ] }
+{ "year" : 2014, "imdb" : { "rating" : 6.2, "votes" : 446, "id" : 3038664 }, "genres" : [ "Drama" ] }
+{ "year" : 2015, "imdb" : { "rating" : 6.1, "votes" : 209, "id" : 4629032 }, "genres" : [ "Drama", "War" ] }
+{ "year" : 2013, "imdb" : { "rating" : 5.8, "votes" : 4355, "id" : 2988272 }, "genres" : [ "Comedy", "Drama", "Romance" ] }
+{ "year" : 2015, "imdb" : { "rating" : 7.5, "votes" : 63, "id" : 4620316 }, "genres" : [ "Drama" ] }
+{ "year" : 2014, "imdb" : { "rating" : 8.1, "votes" : 337941, "id" : 2084970 }, "genres" : [ "Biography", "Drama", "Thriller" ] }
+{ "year" : 2010, "imdb" : { "rating" : 6.9, "votes" : 3347, "id" : 1315350 }, "genres" : [ "Comedy", "Drama" ] }
+{ "year" : 2014, "imdb" : { "rating" : 2.1, "votes" : 567, "id" : 2547942 }, "genres" : [ "Action", "Sci-Fi" ] }
+{ "year" : 2015, "imdb" : { "rating" : 6.2, "votes" : 442, "id" : 3132632 }, "genres" : [ "Documentary", "Comedy" ] }
+
+// finding the top rated genres per year from 2010 to 2015...
+db.movies.aggregate([
+  {
+    "$match": {
+      "imdb.rating": { "$gt": 0 },
+      "year": { "$gte": 2010, "$lte": 2015 },
+      "runtime": { "$gte": 90 }
+    }
+  },
+  {
+    "$unwind": "$genres"
+  },
+  {
+    "$group": {
+      "_id": {
+        "year": "$year",
+        "genre": "$genres"
+      },
+      "average_rating": { "$avg": "$imdb.rating" }
+    }
+  },
+  {
+    "$sort": { "_id.year": -1, "average_rating": -1 }
+  },
+  {
+    "$group": {
+      "_id": "$_id.year",
+      "genre": { "$first": "$_id.genre" },
+      "average_rating": { "$first": "$average_rating" }
+    }
+  },
+  {
+    "$sort": { "_id": -1 }
+  }
+])
+
+// output
+{ "_id" : 2015, "genre" : "Biography", "average_rating" : 7.423404255319149 }
+{ "_id" : 2014, "genre" : "Documentary", "average_rating" : 7.212587412587413 }
+{ "_id" : 2013, "genre" : "Documentary", "average_rating" : 7.158196721311475 }
+{ "_id" : 2012, "genre" : "Talk-Show", "average_rating" : 8.2 }
+{ "_id" : 2011, "genre" : "Documentary", "average_rating" : 7.262857142857143 }
+{ "_id" : 2010, "genre" : "News", "average_rating" : 7.65 }
+```
+
+Lab: We'd like to calculate how many movies every cast member has been in and get an average imdb.rating for each cast member
+
+```javascript
+db.movies.aggregate([
+  { 
+    $match: {
+      "cast": {$elemMatch: { $exists: true }},
+      languages: { $in: ["English"]}
+    }
+  },
+  {
+    $unwind: "$cast" 
+  },
+  {
+    $group: {
+      _id: "$cast",
+      numFilms: {$sum: 1},
+      average: { $avg: "$imdb.rating" }
+    } 
+  },
+  {
+    $sort: {numFilms: -1}
+  } 
+])
+```
