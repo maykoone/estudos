@@ -674,3 +674,72 @@ db.movies.aggregate([
   } 
 ])
 ```
+
+## `$lookup`
+
+```javascript
+// familiarizing with the air_alliances schema
+db.air_alliances.findOne()
+
+//output
+ {
+	"_id" : ObjectId("5980bef9a39d0ba3c650ae9b"),
+	"name" : "Star Alliance",
+	"airlines" : [
+		"Air Canada",
+		"Adria Airways",
+		"Avianca",
+		"Scandinavian Airlines",
+		"All Nippon Airways",
+		"Brussels Airlines",
+		"Shenzhen Airlines",
+		"Air China",
+		"Air New Zealand",
+		"Asiana Airlines",
+		"Brussels Airlines",
+		"Copa Airlines",
+		"Croatia Airlines",
+		"EgyptAir",
+		"TAP Portugal",
+		"United Airlines",
+		"Turkish Airlines",
+		"Swiss International Air Lines",
+		"Lufthansa",
+		"EVA Air",
+		"South African Airways",
+		"Singapore Airlines"
+	]
+}
+
+
+// familiarizing with the air_airlines schema
+db.air_airlines.findOne()
+
+//output
+{
+	"_id" : ObjectId("56e9b497732b6122f8790280"),
+	"airline" : 4,
+	"name" : "2 Sqn No 1 Elementary Flying Training School",
+	"alias" : "",
+	"iata" : "WYT",
+	"icao" : "",
+	"active" : "N",
+	"country" : "United Kingdom",
+	"base" : "HGH"
+}
+
+
+// performing a lookup, joining air_alliances with air_airlines and replacing
+// the current airlines information with the new values
+db.air_alliances.aggregate([
+    {
+      "$lookup": {
+        "from": "air_airlines",
+        "localField": "airlines",
+        "foreignField": "name",
+        "as": "airlines"
+      }
+    }
+  ]).pretty()
+
+```
