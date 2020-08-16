@@ -743,3 +743,294 @@ db.air_alliances.aggregate([
   ]).pretty()
 
 ```
+
+Lab: Which alliance from air_alliances flies the most routes with either a Boeing 747 or an Airbus A380 (abbreviated 747 and 380 in air_routes)?
+
+```javascript
+db.air_routes.aggregate([
+  {
+    $match: {
+      airplane: /747|380/
+    }
+  },
+  {
+    $lookup: {
+      from: "air_alliances",
+      foreignField: "airlines",
+      localField: "airline.name",
+      as: "alliance"
+    }
+  },
+  {
+    $unwind: "$alliance"
+  },
+  {
+    $group: {
+      _id: "$alliance.name",
+      count: { $sum: 1 }
+    }
+  },
+  {
+    $sort: { count: -1 }
+  }
+])
+
+```
+
+## `$graphLookup`
+
+- Single Collection
+
+```javascript
+db.parent_reference.find({})
+//output
+{ "_id" : 9, "name" : "Shannon", "title" : "VP Education", "reports_to" : 5 }
+{ "_id" : 1, "name" : "Dev", "title" : "CEO" }
+{ "_id" : 7, "name" : "Elyse", "title" : "COO", "reports_to" : 2 }
+{ "_id" : 6, "name" : "Ron", "title" : "VP PM", "reports_to" : 2 }
+{ "_id" : 4, "name" : "Carlos", "title" : "CRO", "reports_to" : 1 }
+{ "_id" : 5, "name" : "Andrew", "title" : "VP Eng", "reports_to" : 2 }
+{ "_id" : 3, "name" : "Meagen", "title" : "CMO", "reports_to" : 1 }
+{ "_id" : 10, "name" : "Dan", "title" : "VP Core Engineering", "reports_to" : 5 }
+{ "_id" : 2, "name" : "Eliot", "title" : "CTO", "reports_to" : 1 }
+{ "_id" : 11, "name" : "Cailin", "title" : "VP Cloud Engineering", "reports_to" : 5 }
+{ "_id" : 8, "name" : "Richard", "title" : "VP PS", "reports_to" : 1 }
+
+db.parent_reference.aggregate([
+  {$match: {name: "Eliot"}},
+  { 
+    $graphLookup: {
+      from: "parent_reference",
+      startWith: "$_id",
+      connectToField: "reports_to",
+      connectFromField: "_id",
+      as: "all_reports"
+    }
+  }
+]).pretty()
+
+//output
+{
+	"_id" : 2,
+	"name" : "Eliot",
+	"title" : "CTO",
+	"reports_to" : 1,
+	"all_reports" : [
+		{
+			"_id" : 6,
+			"name" : "Ron",
+			"title" : "VP PM",
+			"reports_to" : 2
+		},
+		{
+			"_id" : 5,
+			"name" : "Andrew",
+			"title" : "VP Eng",
+			"reports_to" : 2
+		},
+		{
+			"_id" : 11,
+			"name" : "Cailin",
+			"title" : "VP Cloud Engineering",
+			"reports_to" : 5
+		},
+		{
+			"_id" : 10,
+			"name" : "Dan",
+			"title" : "VP Core Engineering",
+			"reports_to" : 5
+		},
+		{
+			"_id" : 7,
+			"name" : "Elyse",
+			"title" : "COO",
+			"reports_to" : 2
+		},
+		{
+			"_id" : 9,
+			"name" : "Shannon",
+			"title" : "VP Education",
+			"reports_to" : 5
+		}
+	]
+}
+
+// invert the lookup to find parent nodes of a particular node
+db.parent_reference.aggregate([
+  { $match: { name: "Shannon" } },
+  {
+    $graphLookup: {
+      from: "parent_reference",
+      startWith: "$reports_to",
+      connectToField: "_id",
+      connectFromField: "reports_to",
+      as: "bosses"
+    }
+  }
+]).pretty()
+
+// output
+{
+	"_id" : 9,
+	"name" : "Shannon",
+	"title" : "VP Education",
+	"reports_to" : 5,
+	"bosses" : [
+		{
+			"_id" : 5,
+			"name" : "Andrew",
+			"title" : "VP Eng",
+			"reports_to" : 2
+		},
+		{
+			"_id" : 2,
+			"name" : "Eliot",
+			"title" : "CTO",
+			"reports_to" : 1
+		},
+		{
+			"_id" : 1,
+			"name" : "Dev",
+			"title" : "CEO"
+		}
+	]
+}
+
+```
+
+In the previous schema each node reference the parent node. It is possible to use `$graphLookup` with a reverse schema
+
+```javascript
+db.child_reference.find({})
+//output
+{ "_id" : 5, "name" : "Andrew", "title" : "VP Eng", "direct_reports" : [ "Cailin", "Dan", "Shannon" ] }
+{ "_id" : 7, "name" : "Elyse", "title" : "COO" }
+{ "_id" : 6, "name" : "Ron", "title" : "VP PM" }
+{ "_id" : 4, "name" : "Carlos", "title" : "CRO" }
+{ "_id" : 10, "name" : "Dan", "title" : "VP Core Engineering" }
+{ "_id" : 1, "name" : "Dev", "title" : "CEO", "direct_reports" : [ "Eliot", "Meagen", "Carlos", "Richard", "Kristen" ] }
+{ "_id" : 8, "name" : "Richard", "title" : "VP PS" }
+{ "_id" : 11, "name" : "Cailin", "title" : "VP Cloud Engineering" }
+{ "_id" : 3, "name" : "Meagen", "title" : "CMO" }
+{ "_id" : 9, "name" : "Shannon", "title" : "VP Education" }
+{ "_id" : 2, "name" : "Eliot", "title" : "CTO", "direct_reports" : [ "Andrew", "Elyse", "Ron" ] }
+
+db.child_reference.aggregate([
+  {$match: {name: "Eliot"}},
+  {
+    $graphLookup: {
+      from: "child_reference",
+      startWith: "$direct_reports",
+      connectToField: "name",
+      connectFromField: "direct_reports",
+      as: "all_reports"
+    }
+  }
+]).pretty()
+
+//output
+{
+	"_id" : 2,
+	"name" : "Eliot",
+	"title" : "CTO",
+	"direct_reports" : [
+		"Andrew",
+		"Elyse",
+		"Ron"
+	],
+	"all_reports" : [
+		{
+			"_id" : 5,
+			"name" : "Andrew",
+			"title" : "VP Eng",
+			"direct_reports" : [
+				"Cailin",
+				"Dan",
+				"Shannon"
+			]
+		},
+		{
+			"_id" : 10,
+			"name" : "Dan",
+			"title" : "VP Core Engineering"
+		},
+		{
+			"_id" : 11,
+			"name" : "Cailin",
+			"title" : "VP Cloud Engineering"
+		},
+		{
+			"_id" : 6,
+			"name" : "Ron",
+			"title" : "VP PM"
+		},
+		{
+			"_id" : 9,
+			"name" : "Shannon",
+			"title" : "VP Education"
+		},
+		{
+			"_id" : 7,
+			"name" : "Elyse",
+			"title" : "COO"
+		}
+	]
+}
+
+```
+
+Lab:
+
+```javascript
+db.air_alliances.aggregate([
+  {
+    $match: { name: "OneWorld" }
+  },
+  {
+    $graphLookup: {
+      startWith: "$airlines",
+      from: "air_airlines",
+      connectFromField: "name",
+      connectToField: "name",
+      as: "airlines",
+      maxDepth: 0,
+      restrictSearchWithMatch: {
+        country: { $in: ["Germany", "Spain", "Canada"] }
+      }
+    }
+  },
+  {
+    $graphLookup: {
+      startWith: "$airlines.base",
+      from: "air_routes",
+      connectFromField: "dst_airport",
+      connectToField: "src_airport",
+      as: "connections",
+      maxDepth: 1
+    }
+  },
+  {
+    $project: {
+      validAirlines: "$airlines.name",
+      "connections.dst_airport": 1,
+      "connections.airline.name": 1
+    }
+  },
+  { $unwind: "$connections" },
+  {
+    $project: {
+      isValid: {
+        $in: ["$connections.airline.name", "$validAirlines"]
+      },
+      "connections.dst_airport": 1
+    }
+  },
+  { $match: { isValid: true } },
+  {
+    $group: {
+      _id: "$connections.dst_airport"
+    }
+  }
+])
+
+```
