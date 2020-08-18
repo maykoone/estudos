@@ -1085,3 +1085,82 @@ db.air_alliances.aggregate([
 ])
 
 ```
+
+## Facets
+
+- Single Facet Query
+
+```javascript
+db.movies.aggregate([
+  { $match: { "imdb.rating": { $gt: 8 }, countries:  {$in: ["France"] } } },
+  { $unwind: "$genres" }, 
+  { $sortByCount: "$genres" }
+])
+
+//output
+{ "_id" : "Drama", "count" : 75 }
+{ "_id" : "Documentary", "count" : 36 }
+{ "_id" : "Crime", "count" : 18 }
+{ "_id" : "Comedy", "count" : 15 }
+{ "_id" : "War", "count" : 15 }
+{ "_id" : "Biography", "count" : 14 }
+{ "_id" : "Romance", "count" : 13 }
+{ "_id" : "History", "count" : 12 }
+{ "_id" : "Short", "count" : 11 }
+{ "_id" : "Thriller", "count" : 9 }
+{ "_id" : "Music", "count" : 7 }
+{ "_id" : "Fantasy", "count" : 7 }
+{ "_id" : "Mystery", "count" : 6 }
+{ "_id" : "Family", "count" : 4 }
+{ "_id" : "Adventure", "count" : 4 }
+{ "_id" : "Sci-Fi", "count" : 3 }
+{ "_id" : "Animation", "count" : 3 }
+{ "_id" : "Action", "count" : 3 }
+{ "_id" : "Sport", "count" : 3 }
+{ "_id" : "Musical", "count" : 1 }
+```
+
+- Manual Buckets: grouping documents by range of values
+
+```javascript
+db.movies.aggregate([
+  { $match: {"imdb": {$exists: true}, countries: {$in: ["Brazil"]}}},
+  { $bucket: {
+    groupBy: "$imdb.rating",
+    boundaries: [0,1,2,3,4,5,6,7,8,9,10],
+    default: "unknow"
+  }} 
+])
+//output
+{ "_id" : 1, "count" : 1 }
+{ "_id" : 2, "count" : 1 }
+{ "_id" : 3, "count" : 1 }
+{ "_id" : 4, "count" : 9 }
+{ "_id" : 5, "count" : 37 }
+{ "_id" : 6, "count" : 91 }
+{ "_id" : 7, "count" : 118 }
+{ "_id" : 8, "count" : 21 }
+{ "_id" : "unknow", "count" : 12 }
+```
+
+- Auto Buckets
+
+```javascript
+db.movies.aggregate([
+  { $match: {"imdb": {$exists: true}, countries: {$in: ["Brazil"]}}},
+  { $bucketAuto: {
+    groupBy: "$imdb.rating",
+    buckets: 11 
+  }}
+])
+//output
+{ "_id" : { "min" : 1.1, "max" : 5.6 }, "count" : 28 }
+{ "_id" : { "min" : 5.6, "max" : 6.1 }, "count" : 27 }
+{ "_id" : { "min" : 6.1, "max" : 6.5 }, "count" : 31 }
+{ "_id" : { "min" : 6.5, "max" : 6.8 }, "count" : 29 }
+{ "_id" : { "min" : 6.8, "max" : 7.1 }, "count" : 41 }
+{ "_id" : { "min" : 7.1, "max" : 7.3 }, "count" : 45 }
+{ "_id" : { "min" : 7.3, "max" : 7.5 }, "count" : 27 }
+{ "_id" : { "min" : 7.5, "max" : 8 }, "count" : 30 }
+{ "_id" : { "min" : 8, "max" : "" }, "count" : 33 }
+```
