@@ -979,6 +979,57 @@ db.child_reference.aggregate([
 
 ```
 
+- Cross collection
+
+```javascript
+db.air_airlines.findOne()
+//output
+{
+	"_id" : ObjectId("56e9b497732b6122f8790280"),
+	"airline" : 4,
+	"name" : "2 Sqn No 1 Elementary Flying Training School",
+	"alias" : "",
+	"iata" : "WYT",
+	"icao" : "",
+	"active" : "N",
+	"country" : "United Kingdom",
+	"base" : "HGH"
+}
+
+ db.air_routes.findOne()
+ //output
+{
+	"_id" : ObjectId("56e9b39b732b6122f877fa96"),
+	"airline" : {
+		"id" : 470,
+		"name" : "Air Burkina",
+		"alias" : "2J",
+		"iata" : "VBW"
+	},
+	"src_airport" : "OUA",
+	"dst_airport" : "LFW",
+	"codeshare" : "",
+	"stops" : 0,
+	"airplane" : "CRJ"
+}
+
+
+// get all connected airports starting from the base airport of a given airline with the maximum of one layover
+db.air_airlines.aggregate([
+  {$match:{name: "TAP Portugal"}},
+  {$graphLookup: {
+    from: "air_routes",
+    as: "chain",
+    startWith: "$base",
+    connectFromField: "dst_airport",
+    connectToField: "src_airport",
+    maxDepth: 1,
+    restrictSearchWithMatch: {"airline.name": "TAP Portugal"}}
+  }
+]).pretty()
+
+```
+
 Lab:
 
 ```javascript
