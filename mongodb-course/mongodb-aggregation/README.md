@@ -811,48 +811,48 @@ db.parent_reference.aggregate([
 
 //output
 {
-	"_id" : 2,
-	"name" : "Eliot",
-	"title" : "CTO",
-	"reports_to" : 1,
-	"all_reports" : [
-		{
-			"_id" : 6,
-			"name" : "Ron",
-			"title" : "VP PM",
-			"reports_to" : 2
-		},
-		{
-			"_id" : 5,
-			"name" : "Andrew",
-			"title" : "VP Eng",
-			"reports_to" : 2
-		},
-		{
-			"_id" : 11,
-			"name" : "Cailin",
-			"title" : "VP Cloud Engineering",
-			"reports_to" : 5
-		},
-		{
-			"_id" : 10,
-			"name" : "Dan",
-			"title" : "VP Core Engineering",
-			"reports_to" : 5
-		},
-		{
-			"_id" : 7,
-			"name" : "Elyse",
-			"title" : "COO",
-			"reports_to" : 2
-		},
-		{
-			"_id" : 9,
-			"name" : "Shannon",
-			"title" : "VP Education",
-			"reports_to" : 5
-		}
-	]
+  "_id" : 2,
+  "name" : "Eliot",
+  "title" : "CTO",
+  "reports_to" : 1,
+  "all_reports" : [
+    {
+      "_id" : 6,
+      "name" : "Ron",
+      "title" : "VP PM",
+      "reports_to" : 2
+    },
+    {
+      "_id" : 5,
+      "name" : "Andrew",
+      "title" : "VP Eng",
+      "reports_to" : 2
+    },
+    {
+      "_id" : 11,
+      "name" : "Cailin",
+      "title" : "VP Cloud Engineering",
+      "reports_to" : 5
+    },
+    {
+      "_id" : 10,
+      "name" : "Dan",
+      "title" : "VP Core Engineering",
+      "reports_to" : 5
+    },
+    {
+      "_id" : 7,
+      "name" : "Elyse",
+      "title" : "COO",
+      "reports_to" : 2
+    },
+    {
+      "_id" : 9,
+      "name" : "Shannon",
+      "title" : "VP Education",
+      "reports_to" : 5
+    }
+  ]
 }
 
 // invert the lookup to find parent nodes of a particular node
@@ -871,29 +871,29 @@ db.parent_reference.aggregate([
 
 // output
 {
-	"_id" : 9,
-	"name" : "Shannon",
-	"title" : "VP Education",
-	"reports_to" : 5,
-	"bosses" : [
-		{
-			"_id" : 5,
-			"name" : "Andrew",
-			"title" : "VP Eng",
-			"reports_to" : 2
-		},
-		{
-			"_id" : 2,
-			"name" : "Eliot",
-			"title" : "CTO",
-			"reports_to" : 1
-		},
-		{
-			"_id" : 1,
-			"name" : "Dev",
-			"title" : "CEO"
-		}
-	]
+  "_id" : 9,
+  "name" : "Shannon",
+  "title" : "VP Education",
+  "reports_to" : 5,
+  "bosses" : [
+    {
+      "_id" : 5,
+      "name" : "Andrew",
+      "title" : "VP Eng",
+      "reports_to" : 2
+    },
+    {
+      "_id" : 2,
+      "name" : "Eliot",
+      "title" : "CTO",
+      "reports_to" : 1
+    },
+    {
+      "_id" : 1,
+      "name" : "Dev",
+      "title" : "CEO"
+    }
+  ]
 }
 
 ```
@@ -930,51 +930,51 @@ db.child_reference.aggregate([
 
 //output
 {
-	"_id" : 2,
-	"name" : "Eliot",
-	"title" : "CTO",
-	"direct_reports" : [
-		"Andrew",
-		"Elyse",
-		"Ron"
-	],
-	"all_reports" : [
-		{
-			"_id" : 5,
-			"name" : "Andrew",
-			"title" : "VP Eng",
-			"direct_reports" : [
-				"Cailin",
-				"Dan",
-				"Shannon"
-			]
-		},
-		{
-			"_id" : 10,
-			"name" : "Dan",
-			"title" : "VP Core Engineering"
-		},
-		{
-			"_id" : 11,
-			"name" : "Cailin",
-			"title" : "VP Cloud Engineering"
-		},
-		{
-			"_id" : 6,
-			"name" : "Ron",
-			"title" : "VP PM"
-		},
-		{
-			"_id" : 9,
-			"name" : "Shannon",
-			"title" : "VP Education"
-		},
-		{
-			"_id" : 7,
-			"name" : "Elyse",
-			"title" : "COO"
-		}
-	]
+  "_id" : 2,
+  "name" : "Eliot",
+  "title" : "CTO",
+  "direct_reports" : [
+    "Andrew",
+    "Elyse",
+    "Ron"
+  ],
+  "all_reports" : [
+    {
+      "_id" : 5,
+      "name" : "Andrew",
+      "title" : "VP Eng",
+      "direct_reports" : [
+        "Cailin",
+        "Dan",
+        "Shannon"
+      ]
+    },
+    {
+      "_id" : 10,
+      "name" : "Dan",
+      "title" : "VP Core Engineering"
+    },
+    {
+      "_id" : 11,
+      "name" : "Cailin",
+      "title" : "VP Cloud Engineering"
+    },
+    {
+      "_id" : 6,
+      "name" : "Ron",
+      "title" : "VP PM"
+    },
+    {
+      "_id" : 9,
+      "name" : "Shannon",
+      "title" : "VP Education"
+    },
+    {
+      "_id" : 7,
+      "name" : "Elyse",
+      "title" : "COO"
+    }
+  ]
 }
 
 ```
@@ -985,32 +985,32 @@ db.child_reference.aggregate([
 db.air_airlines.findOne()
 //output
 {
-	"_id" : ObjectId("56e9b497732b6122f8790280"),
-	"airline" : 4,
-	"name" : "2 Sqn No 1 Elementary Flying Training School",
-	"alias" : "",
-	"iata" : "WYT",
-	"icao" : "",
-	"active" : "N",
-	"country" : "United Kingdom",
-	"base" : "HGH"
+  "_id" : ObjectId("56e9b497732b6122f8790280"),
+  "airline" : 4,
+  "name" : "2 Sqn No 1 Elementary Flying Training School",
+  "alias" : "",
+  "iata" : "WYT",
+  "icao" : "",
+  "active" : "N",
+  "country" : "United Kingdom",
+  "base" : "HGH"
 }
 
  db.air_routes.findOne()
  //output
 {
-	"_id" : ObjectId("56e9b39b732b6122f877fa96"),
-	"airline" : {
-		"id" : 470,
-		"name" : "Air Burkina",
-		"alias" : "2J",
-		"iata" : "VBW"
-	},
-	"src_airport" : "OUA",
-	"dst_airport" : "LFW",
-	"codeshare" : "",
-	"stops" : 0,
-	"airplane" : "CRJ"
+  "_id" : ObjectId("56e9b39b732b6122f877fa96"),
+  "airline" : {
+    "id" : 470,
+    "name" : "Air Burkina",
+    "alias" : "2J",
+    "iata" : "VBW"
+  },
+  "src_airport" : "OUA",
+  "dst_airport" : "LFW",
+  "codeshare" : "",
+  "stops" : 0,
+  "airplane" : "CRJ"
 }
 
 
