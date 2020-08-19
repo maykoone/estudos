@@ -1088,7 +1088,7 @@ db.air_alliances.aggregate([
 
 ## Facets
 
-- Single Facet Query
+### Single Facet Query
 
 ```javascript
 db.movies.aggregate([
@@ -1120,7 +1120,7 @@ db.movies.aggregate([
 { "_id" : "Musical", "count" : 1 }
 ```
 
-- Manual Buckets: grouping documents by range of values
+### Manual Buckets: grouping documents by range of values
 
 ```javascript
 db.movies.aggregate([
@@ -1143,7 +1143,7 @@ db.movies.aggregate([
 { "_id" : "unknow", "count" : 12 }
 ```
 
-- Auto Buckets
+### Auto Buckets
 
 ```javascript
 db.movies.aggregate([
@@ -1163,4 +1163,97 @@ db.movies.aggregate([
 { "_id" : { "min" : 7.3, "max" : 7.5 }, "count" : 27 }
 { "_id" : { "min" : 7.5, "max" : 8 }, "count" : 30 }
 { "_id" : { "min" : 8, "max" : "" }, "count" : 33 }
+```
+
+### Multiple Facets `$facet`
+
+```javascript
+db.movies.aggregate([
+  { $match: { "imdb.rating": { $exists: true }, countries:  {$in: ["France"] } } },
+  { $unwind: "$genres" },
+  { $facet: 
+    { 
+      genres: [{ $sortByCount: "$genres" }],
+      ratings: [{ $bucket: { groupBy: "$imdb.rating", boundaries: [0,1,2,3,4,5,6,7,8,9,10], default: "unknow" }}],
+      years: [{ $bucketAuto: { groupBy: "$year", buckets: 10 }}]
+    }
+  }
+]).pretty()
+
+//output
+{
+  "genres" : [
+    { "_id" : "Drama", "count" : 2824 },
+    { "_id" : "Comedy", "count" : 1306 }, 
+    { "_id" : "Romance", "count" : 722 }, 
+  ],
+  "ratings" : [
+    { "_id" : 7, "count" : 3142 }, 
+    { "_id" : 8, "count" : 386 }, 
+    { "_id" : 9, "count" : 5 }, 
+    { "_id" : "unknow", "count" : 176 }
+  ],
+  "years" : [
+    { "_id" : { "min" : 2010, "max" : 2013 }, "count" : 951 }, 
+    { "_id" : { "min" : 2013, "max" : 2016 }, "count" : 903 }, 
+    { "_id" : { "min" : 2016, "max" : 2015 }, "count" : 94 }
+  ]
+}
+
+```
+
+using other aggregations stages with `$facet` othen than `$sortByCount`, `$bucket` and `$bucketAuto`
+
+```javascript
+db.movies.aggregate([
+  { $match: {"imdb.rating": {$gt: 0}, metacritic: {$gt: 0}}},
+  { $project: {"title": 1, "metacritic": 1, "imdb.rating": 1}},
+  { $facet: 
+    {
+      "top_metacritic": [
+        { $sort: {"metacritic": -1}},
+        { $limit: 3},
+        { $project: {title: 1}}
+      ], 
+      "top_imdb": [
+        { $sort: {"imdb.rating": -1}}, 
+        { $limit: 3},
+        { $project: {title: 1}}
+      ]
+    }
+  } 
+]).pretty()
+
+//output
+{
+  "top_metacritic" : [
+    {
+      "_id" : ObjectId("573a1395f29313caabce2ae5"),
+      "title" : "Au Hasard Balthazar"
+    },
+    {
+      "_id" : ObjectId("573a13ddf29313caabdb4133"),
+      "title" : "Best Kept Secret"
+    },
+    {
+      "_id" : ObjectId("573a1394f29313caabcdf67a"),
+      "title" : "Journey to Italy"
+    }
+  ],
+  "top_imdb" : [
+    {
+      "_id" : ObjectId("573a1399f29313caabceeb20"),
+      "title" : "The Shawshank Redemption"
+    },
+    {
+      "_id" : ObjectId("573a1396f29313caabce4a9a"),
+      "title" : "The Godfather"
+    },
+    {
+      "_id" : ObjectId("573a13eff29313caabdd82f3"),
+      "title" : "The Martian"
+    }
+  ]
+}
+
 ```
