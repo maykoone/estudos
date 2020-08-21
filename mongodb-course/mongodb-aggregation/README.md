@@ -1329,5 +1329,17 @@ db.employees.aggregate([
   "phone" : "+1 (984) 539-2931",
   "address" : "420 Miami Court, Sisquoc, Washington, 17151"
 }
+```
 
+## `$output`
+
+- Will create a new collection or overwrite an existing collection if specified
+- Honors indexes on existing collections
+- Will not create or overwrite data if pipeline errors
+- Creates collections in the same database as the source collection
+
+```javascript
+db.collection.aggregate([
+  { $stage1 }, { $stage2 }, ..., { $stageN }, { $output: "newcollection"}
+])
 ```
