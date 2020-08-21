@@ -1337,9 +1337,32 @@ db.employees.aggregate([
 - Honors indexes on existing collections
 - Will not create or overwrite data if pipeline errors
 - Creates collections in the same database as the source collection
+- Must be the last stage
 
 ```javascript
 db.collection.aggregate([
   { $stage1 }, { $stage2 }, ..., { $stageN }, { $output: "newcollection"}
+])
+```
+
+## `$merge`
+
+- Allow to output results of aggregation pipeline into another collection
+- Has options to specify wheter you want to merge and how or to insert
+- Can output to a sharded or unsharded collection in the same or different database 
+- Must be the last stage
+
+```javascript
+//using default options
+db.collection.aggregate([
+  { $stage1 }, { $stage2 }, ..., { $stageN }, { $merge: "newcollection"}
+])
+// options for behavior on matches
+db.collection.aggregate([
+  { $stage1 }, { $stage2 }, ..., { $stageN }, { $merge: { into: "output_collection", on: "_id", whenMatched: "merge", whenNotMatched: "insert"}}
+])
+// different database
+db.collection.aggregate([
+  { $stage1 }, { $stage2 }, ..., { $stageN }, { $output: { db: "otherdb", into: "outputcollection"}}
 ])
 ```
