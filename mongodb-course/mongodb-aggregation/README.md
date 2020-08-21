@@ -1366,3 +1366,22 @@ db.collection.aggregate([
   { $stage1 }, { $stage2 }, ..., { $stageN }, { $output: { db: "otherdb", into: "outputcollection"}}
 ])
 ```
+
+## Views
+
+```javascript
+db.createView(<name of the view>, <source collection>, [<aggregation pipeline>])
+
+// getting all collections in a database and seeing their information
+db.getCollectionInfos()
+
+// getting information on views only
+db.system.views.find()
+
+// All collection read operations are available for view
+db.view.find()
+db.view.findOne()
+db.view.count()
+db.view.distinct()
+db.view.aggregate()
+```
