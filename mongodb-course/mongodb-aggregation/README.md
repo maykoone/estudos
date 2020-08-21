@@ -1255,5 +1255,79 @@ db.movies.aggregate([
     }
   ]
 }
+```
+
+## `$redact`
+
+- Help us protect information from unauthorized access
+- Must be an expression that resolve to one of three values: `$$DESCEND` (retain this level), `$$PRUNE` (remove) or `$$KEEP` (retain)
+
+```javascript
+//schema
+{
+  "_id" : ObjectId("59d288690e3733b153a9397f"),
+  "employee_ID" : "7d735016-4f9e-4322-87cf-54a313038caf",
+  "acl" : [
+    "HR",
+    "Management",
+    "Finance",
+    "Executive"
+  ],
+  "employee_compensation" : {
+    "acl" : [
+      "Management",
+      "Finance",
+      "Executive"
+    ],
+    "salary" : 122519,
+    "stock_award" : 4880,
+    "programs" : {
+      "acl" : [
+        "Finance",
+        "Executive"
+      ],
+      "401K_contrib" : 0,
+      "health_plan" : true,
+      "spp" : 0.05
+    }
+  },
+  "employee_grade" : 3,
+  "team" : "Blue",
+  "age" : 50,
+  "first_name" : "Brown",
+  "last_name" : "Christian",
+  "gender" : "male",
+  "phone" : "+1 (927) 508-3083",
+  "address" : "564 Powers Street, Waumandee, Virgin Islands, 58090"
+}
+var userAccess = "HR"
+db.employees.aggregate([
+  { $match: {team: "Blue"}},
+  { 
+    $redact: {
+      $cond: [{ $in: [userAccess, "$acl"] }, "$$DESCEND", "$$PRUNE"]
+    }
+  }
+]).pretty()
+
+//example output
+{
+  "_id" : ObjectId("59d288690e3733b153a939c0"),
+  "employee_ID" : "996e0f99-8da7-40ee-a8a9-73e939abfd09",
+  "acl" : [
+    "HR",
+    "Management",
+    "Finance",
+    "Executive"
+  ],
+  "employee_grade" : 3,
+  "team" : "Blue",
+  "age" : 20,
+  "first_name" : "Mcleod",
+  "last_name" : "Doyle",
+  "gender" : "male",
+  "phone" : "+1 (984) 539-2931",
+  "address" : "420 Miami Court, Sisquoc, Washington, 17151"
+}
 
 ```
