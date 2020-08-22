@@ -1385,3 +1385,43 @@ db.view.count()
 db.view.distinct()
 db.view.aggregate()
 ```
+
+## Pipeline optimization
+
+- Try to ensure that the aggregation pipeline uses indexes as much as possible
+- When the server encounters a stage that is not able to use indexes, all of the following stages will no longer be able to use indexes either
+- The query optimizer will try detect when a stage can be moved forward so indexes can be utilized
+- Use `explain: true` to determine how aggregation queries are executed and whether or not indexes are being utilized
+
+  ```javascript
+  db.collection.aggregate([
+    { $stage1 },
+    ...
+    { $stageN }
+  ], {explain: true})
+  ```
+
+- Try to use operators that use indexes at the front of the pipeline (eg. `$match`, `$sort`)
+- If you're doing a limit and a sort, make sure that they're near each other and closest to the front of the pipeline, so the server will be able to do a top-k sort and only allocate memory for the final number of documents.
+
+  ```javascript
+  db.collection.aggregation([
+    { $match: <predicate> },
+    { $limit: 10 }
+    { $sort: <predicate> }
+  ])
+  ```
+
+- The aggregation results are subject to 16MB document limit and 100MB of RAM usage per stage. Use `$limit` and `$project` to reduce the resulting document size.
+- It's possible to specify `allowDiskUse` to get around these limits, but this will seriously decrease performance
+
+  ```javascript
+  db.collection.aggregate([
+    { $stage1 },
+    ...
+    { $stageN }
+  ], {allowDiskUse: true})
+  ```
+
+- Avoid unnecessary stages, Aggregation framework can project fields automatically if final shape of the output document can be determined from initial input
+- Use accumulator expression, `$map`, `$reduce` and `$filter` in project before an `$unwind`, if possible
