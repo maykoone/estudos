@@ -124,6 +124,7 @@ mongodb+srv://<username>:<password>@<host>/database
 - Projections Builder
 
     ```java
+    import static com.mongodb.client.model.Projections.*;
     // given the following query where we want to project only title and year
     // db.movies.find({cast: "Salma Hayek"}, { title: 1, year: 1 })
 
