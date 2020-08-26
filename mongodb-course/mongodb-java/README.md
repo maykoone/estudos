@@ -62,7 +62,7 @@ mongodb+srv://<username>:<password>@<host>/database
 - Document
 
     ```java
-    // The basic data structures in MongoDB are documents.
+    // The basic data structures in MongoDB are documents. We use documents to define data objects, queries, update operations and configuration settings
     Document document;
     document = new Document("name", new Document("first", "Norberto").append("last", "Leite"));
     collection.insertOne(document);
@@ -74,4 +74,86 @@ mongodb+srv://<username>:<password>@<host>/database
     //The Document class implements the Bson interface, because Documents are BSON data structures.
     Bson bson;
     bson = new Document("name", new Document("first", "Norberto").append("last", "Leite"));
+    ```
+
+## Query Builders
+
+- Filters Builder
+
+    ```java
+    import static com.mongodb.client.model.Filters.*;
+    // given the query below
+    // db.movies.find({cast: "Salma Hayek"}).limit(1)
+
+    // in the old style we use Document to build the query
+    Document onerousFilter = new Document("cast", "Salma Hayek");
+    Document actual = moviesCollection.find(onerousFilter).limit(1).iterator().tryNext();
+
+    // using query Filters Builder API we can compose our queries
+    Bson queryFilter = eq("cast", "Salma Hayek");
+    Document builderActual = moviesCollection.find(queryFilter).limit(1).iterator().tryNext();
+
+    // db.movie.find({cast: { $all: ["Salma Hayek", "Johnny Depp"] }})
+    //old style
+    Document oldFilter =
+        new Document("cast", new Document("$all", Arrays.asList("Salma Hayek", "Johnny Depp")));
+
+    // Filters Builder
+    Bson queryFilter = all("cast", "Salma Hayek", "Johnny Depp");
+
+    // Multipe predicates
+    // db.movies.find({
+    //     cast: "Tom Hanks",
+    //     year: { $gte: 1990, $lt: 2005 },
+    //     metacritic: { $gte: 80 }
+    // })
+    Bson queryFilter =
+        and(
+            // matching tom hanks
+            eq("cast", "Tom Hanks"),
+            // released after 1990
+            gte("year", 1990),
+            // but before 2005
+            lt("year", 2005),
+            // with a minimum metacritic of 80
+            gte("metacritic", 80));
+    List<Document> results = new ArrayList<>();
+    moviesCollection.find(queryFilter).into(results);
+    ```
+
+- Projections Builder
+
+    ```java
+    // given the following query where we want to project only title and year
+    // db.movies.find({cast: "Salma Hayek"}, { title: 1, year: 1 })
+
+    // using Document
+    Document oldFilter = new Document("cast", "Salma Hayek");
+    Document oldResult =
+        moviesCollection
+            .find(oldFilter)
+            .limit(1)
+            .projection(new Document("title", 1).append("year", 1))
+            .iterator()
+            .tryNext();
+
+    // With Projections
+    Bson queryFilter = and(eq("cast", "Salma Hayek"));
+    Document result =
+        moviesCollection
+            .find(queryFilter)
+            .limit(1)
+            // this feels much more declarative
+            .projection(fields(include("title", "year")))
+            .iterator()
+            .tryNext();
+
+    // we can exclude _id field using excludeId() or exclude(field) to exclude an arbitrary field
+    Document no_id =
+        moviesCollection
+            .find(queryFilter)
+            .limit(1)
+            .projection(fields(include("title", "year"), excludeId()))
+            .iterator()
+            .tryNext();
     ```
