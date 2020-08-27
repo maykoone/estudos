@@ -76,6 +76,55 @@ mongodb+srv://<username>:<password>@<host>/database
     bson = new Document("name", new Document("first", "Norberto").append("last", "Leite"));
     ```
 
+## Basic Reads
+
+- Find One / Find Single Document
+
+    ```java
+    // without any query
+    MongoCursor cursor = moviesCollection.find(new Document()).limit(1).iterator();
+    Document first = (Document) cursor.next();
+
+    // using a query
+    Document queryFilter = new Document("cast", "Salma Hayek");
+    Document actual = moviesCollection.find(queryFilter).limit(1).iterator().next();
+
+    /**
+    * if we call next() on an iterator that returns no document we will get a NoSuchElementException.
+    * To be safe, we should use the tryNext method. This will return null if nothing exists in the
+    * iterator
+    */
+    Document actual =
+        moviesCollection.find(new Document("title", "foobarbizzlebazzle")).iterator().tryNext();
+    ```
+
+- Find a list of documents
+
+    ```java
+    Document queryFilter = new Document("cast", "Salma Hayek");
+
+    // we'll create an ArrayList to hold our results
+    List<Document> results = new ArrayList<>();
+
+    // now we issue the query, and send them directly into our container
+    moviesCollection.find(queryFilter).into(results);
+    ```
+
+- Projections
+
+    ```java
+    // db.movies.find({cast: "Salma Hayek"}, { title: 1, year: 1, _id: 0 })
+    Document queryFilter = new Document("cast", "Salma Hayek");
+    Document result =
+        moviesCollection
+            .find(queryFilter)
+            .limit(1)
+             // unless we explicitly remove the _id key it will remain in the result or results.
+            .projection(new Document("title", 1).append("year", 1).append("_id", 0)) 
+            .iterator()
+            .tryNext();
+    ```
+
 ## Query Builders
 
 - Filters Builder
