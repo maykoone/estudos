@@ -207,3 +207,165 @@ mongodb+srv://<username>:<password>@<host>/database
             .iterator()
             .tryNext();
     ```
+
+## POJO with the MongoDB Java Driver
+
+[POJO Docs](http://mongodb.github.io/mongo-java-driver/3.6/driver/getting-started/quick-start-pojo/), [Codecs Tutorial](http://mongodb.github.io/mongo-java-driver/3.2/bson/codecs/)
+
+- Read
+
+    ```java
+    //our POJO
+    import org.bson.codecs.pojo.annotations.BsonProperty;
+    import org.bson.types.ObjectId;
+
+    public class ActorBasic {
+        @BsonProperty("_id")
+        private ObjectId id;
+
+        private String name;
+        @BsonProperty("date_of_birth")
+        private Date dateOfBirth;
+
+        private List awards;
+        @BsonProperty("num_movies")
+        private int numMovies;
+
+        // getters and setters omitted
+    }
+    /**
+     * Here we are instantiating a codec registry and telling it to use
+     * the default pojo provider, building it with an automatic setting,
+     * which uses type introspection.
+     * 
+     * - Registry is a "factory" of Codecs
+     * - Codecs determines how BSON data is converted and into what type.
+     * - There are default and custom codecs
+     */
+    CodecRegistry pojoCodecRegistry =
+        CodecRegistries.fromRegistries(
+            MongoClientSettings.getDefaultCodecRegistry(),
+            CodecRegistries.fromProviders(PojoCodecProvider.builder().automatic(true).build()));
+    
+    MongoCollection<ActorBasic> actors =
+        testDb.getCollection("actors", ActorBasic.class).withCodecRegistry(pojoCodecRegistry);
+
+    // create a  query to retrieve a document with a given actor id.
+    Bson queryFilter = new Document("_id", actor1Id);
+
+    // use our query to pipe our document into an ActorBasic object in one
+    // quick line
+    ActorBasic pojoActor = actors.find(queryFilter).iterator().tryNext();
+    ```
+
+- Read With Custom Codec
+    ```java
+    /**
+     * There are scenarios where you have to write custom codecs.
+     * Sometimes your app uses data types that are
+     *  different from what is stored in the database.
+     */
+    // example of custom codec implementation
+    public class ActorCodec implements CollectibleCodec<ActorWithStringId> {
+
+        private final Codec<Document> documentCodec;
+
+        public ActorCodec() {
+            this.documentCodec = new DocumentCodec();
+        }
+
+        public void encode(
+            BsonWriter bsonWriter, ActorWithStringId actor, EncoderContext encoderContext) {
+            // logic to map actor to document
+            documentCodec.encode(bsonWriter, actorDoc, encoderContext);
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public ActorWithStringId decode(BsonReader bsonReader, DecoderContext decoderContext) {
+            Document actorDoc = documentCodec.decode(bsonReader, decoderContext);
+            //logic to map document to actor
+            return actor;
+        }
+
+        @Override
+        public Class<ActorWithStringId> getEncoderClass() {}
+
+        @Override
+        public ActorWithStringId generateIdIfAbsentFromDocument(ActorWithStringId actor) {}
+
+        @Override
+        public boolean documentHasId(ActorWithStringId actor) {}
+
+        @Override
+        public BsonString getDocumentId(ActorWithStringId actor) {}
+    }
+
+     // first we establish the use of our new custom codec
+    ActorCodec actorCodec = new ActorCodec();
+    // then create a codec registry with this codec
+    CodecRegistry codecRegistry =
+        CodecRegistries.fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), CodecRegistries.fromCodecs(actorCodec));
+    // we can now access the actors collection with the use of our custom
+    // codec that is specifically tailored for the actor documents.
+    Bson queryFilter = new Document("_id", actor1Id);
+    MongoCollection<ActorWithStringId> customCodecActors =
+        testDb.getCollection("actors", ActorWithStringId.class).withCodecRegistry(codecRegistry);
+    // we retrieve the first actor document
+    ActorWithStringId actor = customCodecActors.find(Filters.eq("_id", actor1Id)).first();
+    ```
+
+- Read using custom field codec
+
+    ```java
+    /**
+    * use the default CodecRegistry while customizing the
+    * fields that we know need special treatment
+    */
+    // Implementing Codec Interface
+    public class StringObjectIdCodec implements Codec<String> {}
+    // select a class that will be used as our POJO
+    ClassModelBuilder<ActorWithStringId> classModelBuilder =
+        ClassModel.builder(ActorWithStringId.class);
+    // get the property that needs type conversion
+    PropertyModelBuilder<String> idPropertyModelBuilder =
+        (PropertyModelBuilder<String>) classModelBuilder.getProperty("id");
+    // apply type conversion to the property of interest
+    // StringObjectIdCodec describes specifically how to encode and decode
+    // the ObjectId into a String and vice-versa.
+    idPropertyModelBuilder.codec(new StringObjectIdCodec());
+    // use the default CodecRegistry, with the changes implemented above
+    // through registering the classModelBuilder with the PojoCodecProvider
+    CodecRegistry stringIdCodecRegistry =
+        fromRegistries(
+            MongoClientSettings.getDefaultCodecRegistry(),
+            fromProviders(
+                PojoCodecProvider.builder()
+                    .register(classModelBuilder.build())
+                    .automatic(true)
+                    .build()));
+    // we're done! Lets test if it worked! let us get the actors collection
+    MongoCollection<ActorWithStringId> actors =
+        testDb
+            .getCollection("actors", ActorWithStringId.class)
+            .withCodecRegistry(stringIdCodecRegistry);
+    ```
+
+- Write using custom codec
+
+    ```java
+    // custom codec
+    ActorCodec actorCodec = new ActorCodec();
+    // we now create a codecRegistry with the custom Codec
+    CodecRegistry codecRegistry =
+        fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), fromCodecs(actorCodec));
+    // and get the "actors" collection using our new Registry
+    MongoCollection<ActorWithStringId> customCodecActors =
+        testDb.getCollection("actors", ActorWithStringId.class).withCodecRegistry(codecRegistry);
+    // we can now create a new actor and insert it directly into our
+    // collection with all required features present.
+    ActorWithStringId actorNew = new ActorWithStringId();
+    actorNew.setNumMovies(2);
+    actorNew.setName("Norberto");
+    customCodecActors.insertOne(actorNew);
+    ```
