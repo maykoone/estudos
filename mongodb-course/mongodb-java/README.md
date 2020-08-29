@@ -473,12 +473,48 @@ mongodb+srv://<username>:<password>@<host>/database
     AggregateIterable<Document> iterable = moviesCollection.aggregate(pipeline)
     ```
 
-### Sumary
+### Summary
 
-- Aggregation framework pipelines are composed of lists of Bson stage
+* Aggregation framework pipelines are composed of lists of Bson stage
 document objects
-- Use the driver Aggregates builder class to compose the different stages
-- Use Accumulators, Sorts and Filters builders to compose the different
+* Use the driver Aggregates builder class to compose the different stages
+* Use Accumulators, Sorts and Filters builders to compose the different
 stages expressions
-- Complex aggregation stages can imply several different sub-pipelines
+* Complex aggregation stages can imply several different sub-pipelines
 and stage arguments.
+
+## Cursor Methods and Aggregation Equivalents
+
+    ```java
+    Bson queryFilter = Filters.eq("directors", "Sam Raimi");
+
+    // we can append cursor methods in a find command
+    FindIterable<Document> findIterable =
+        moviesCollection.find(queryFilter).sort(Sorts.ascending("year")).skip(10).limit(2);
+
+    List<Document> findList = new ArrayList<>();
+    findIterable.into(findList);
+
+    // And the equivalents in the aggregation
+    Bson matchStage = Aggregates.match(queryFilter);
+    Bson skipStage = Aggregates.skip(10);
+    Bson sortStage = Aggregates.sort(Sorts.ascending("year"));
+    Bson limitStage = Aggregates.limit(2);
+
+    // By running the proper order we will get the same list of results.
+    List<Bson> pipeline = new ArrayList<>();
+
+    pipeline.add(matchStage);
+    pipeline.add(sortStage);
+    pipeline.add(skipStage);
+    pipeline.add(limitStage);
+
+    List<Document> aggregationList = new ArrayList<>();
+    moviesCollection.aggregate(correctPipeline).into(aggregationList);
+    ```
+
+### Summary
+
+* Cursor methods have their equivalents in aggregation framework stages 
+* The order  by which cursor methods are applied does not impact the result set 
+* The order by which aggregation stages are apply does!
