@@ -518,3 +518,106 @@ and stage arguments.
 * Cursor methods have their equivalents in aggregation framework stages 
 * The order  by which cursor methods are applied does not impact the result set 
 * The order by which aggregation stages are apply does!
+
+## Basic Writes
+
+- Insert One
+
+    ```java
+    //create a Document
+    Document doc = new Document("title", "Fortnite");
+    doc.append("year", 2018);
+    doc.put("label", "Epic Games");
+
+    // then we can insert this document by calling the collection insertOne
+    // method
+    videoGames.insertOne(doc);
+
+    Assert.assertNotNull(doc.getObjectId("_id"));
+    ```
+
+- Insert Many
+
+    ```java
+    List<Document> someGames = new ArrayList<>();
+
+    Document doc1 = new Document("title", "Hitman 2");
+    doc1.put("year", 2018);
+    doc1.put("label", "Square Enix");
+
+    Document doc2 = new Document();
+    HashMap<String, Object> documentValues = new HashMap<>();
+    documentValues.put("title", "Tom Raider");
+    documentValues.put("label", "Eidos");
+    documentValues.put("year", 2013);
+    doc2.putAll(documentValues);
+
+    // Once we have the two documents we can add them to the list of
+    // documents
+    someGames.add(doc1);
+    someGames.add(doc2);
+
+    // and finally insert all of these documents using insertMany
+    videoGames.insertMany(someGames);
+
+    Assert.assertNotNull(doc1.getObjectId("_id"));
+    Assert.assertNotNull(doc2.getObjectId("_id"));
+    ```
+
+- Upsert ("update" or "insert" if it does not exist)
+
+    ```java
+    import com.mongodb.client.model.UpdateOptions;
+    import com.mongodb.client.model.Updates;
+    import com.mongodb.client.result.UpdateResult;
+
+    Document doc1 = new Document("title", "Final Fantasy");
+    doc1.put("year", 2003);
+    doc1.put("label", "Square Enix");
+
+    Bson query = new Document("title", "Final Fantasy");
+
+    UpdateOptions options = new UpdateOptions();
+    options.upsert(true);
+
+    // and adding those options to the update method.
+    UpdateResult resultWithUpsert =
+        videoGames.updateOne(query, new Document("$set", doc1), options);
+
+    Assert.assertNotNull(resultWithUpsert.getUpsertedId());
+
+    // Let's say we want add a field called, just_inserted, if the
+    // document did not existed before, but do not set it if the document
+    // already existed
+    Bson updateObj1 =
+        Updates.combine(
+            Updates.set("title", "Final Fantasy 1"), Updates.setOnInsert("just_inserted", "yes"));
+
+    query = Filters.eq("title", "Final Fantasy 1");
+
+    UpdateResult updateAlreadyExisting = videoGames.updateOne(query, updateObj1, options);
+    // In this case, the field will not be present when we query for this
+    // document
+    Document finalFantasyRetrieved =
+        videoGames.find(Filters.eq("title", "Final Fantasy 1")).first();
+    Assert.assertFalse(finalFantasyRetrieved.keySet().contains("just_inserted"));
+
+    // on the other hand, if the document is not updated, but inserted
+    Document doc2 = new Document("title", "CS:GO");
+    doc2.put("year", 2018);
+    doc2.put("label", "Source");
+
+    Document updateObj2 = new Document();
+    updateObj2.put("$set", doc2);
+    updateObj2.put("$setOnInsert", new Document("just_inserted", "yes"));
+
+    UpdateResult newDocumentUpsertResult =
+        videoGames.updateOne(Filters.eq("title", "CS:GO"), updateObj2, options);
+
+    // Then, we will see the field correctly set, querying the collection
+    // using the upsertId field in the update result object
+    Bson queryInsertedDocument = new Document("_id", newDocumentUpsertResult.getUpsertedId());
+    Document csgoDocument = videoGames.find(queryInsertedDocument).first();
+
+    Assert.assertTrue(csgoDocument.keySet().contains("just_inserted"));
+    ```
