@@ -621,3 +621,18 @@ and stage arguments.
 
     Assert.assertTrue(csgoDocument.keySet().contains("just_inserted"));
     ```
+
+## Write Concerns
+
+[Reference](https://docs.mongodb.com/manual/reference/write-concern/)
+
+- In MongoDB a write operation will be received by the primary node of the replica set, as soon as it's done perfoming the write
+it's going to send to send an acknowledgment back
+- In some scenarios the client only want to receive a acknowledgement after the write was performed in more than one node of the replica set,
+in this case we can specify a write with concern, the default is W1, that is the acknowlodgement will sent back to client after one node receive that write
+
+    ```java
+    // in this scenario we want increase the write durability
+    Document user = new Document("email", "email@email.com");
+    usersCollection.withWriteConcern(WriteConcern.MAJORITY).insertOne(user);
+    ```
