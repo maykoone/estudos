@@ -369,3 +369,49 @@ mongodb+srv://<username>:<password>@<host>/database
     actorNew.setName("Norberto");
     customCodecActors.insertOne(actorNew);
     ```
+
+## Aggregation Builders
+
+    ```java
+    import com.mongodb.client.model.Aggregates;
+    import com.mongodb.client.model.Accumulators;
+    import com.mongodb.client.model.Sorts;
+
+    /*
+    We can use the Aggregation Builders to express a aggregation pipeline like this
+    db.movies.aggregate([
+        {$match: {countries: "Portugal"}},
+        {$unwind: "$cast"},
+        {$group: {_id: "$cast", gigs: {$sum: 1}}}
+    ])
+     */
+    List<Bson> pipeline = new ArrayList<>();
+
+    // $match stage
+    Bson countryPT = Filters.eq("countries", "Portugal");
+    Bson matchStage = Aggregates.match(countryPT);
+
+    // $unwind stage
+    Bson unwindCastStage = Aggregates.unwind("$cast");
+
+    // Accumulators provides us with builder methods to operations like $sum, $avg, $min, $max
+    BsonField sum1 = Accumulators.sum("count", 1);
+    // $group stage
+    Bson groupStage = Aggregates.group("$cast", sum1);
+
+    // using Sorts builder
+    Bson sortOrder = Sorts.descending("count");
+    // $sort stage
+    Bson sortStage = Aggregates.sort(sortOrder);
+
+    pipeline.add(matchStage);
+    pipeline.add(unwindCastStage);
+    pipeline.add(groupStage);
+    pipeline.add(sortStage);
+
+    List<Document> groupByResults = new ArrayList<>();
+
+    // finally call aggregate method
+    AggregateIterable<Document> iterable = moviesCollection.aggregate(pipeline);
+    iterable.into(groupByResults);
+    ```
