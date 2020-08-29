@@ -372,6 +372,8 @@ mongodb+srv://<username>:<password>@<host>/database
 
 ## Aggregation Builders
 
+- Basic Aggregation
+
     ```java
     import com.mongodb.client.model.Aggregates;
     import com.mongodb.client.model.Accumulators;
@@ -415,3 +417,68 @@ mongodb+srv://<username>:<password>@<host>/database
     AggregateIterable<Document> iterable = moviesCollection.aggregate(pipeline);
     iterable.into(groupByResults);
     ```
+
+- For more complex aggregation stages we may need to use other types and parameters. Ex. `$facet`
+
+    ```java
+    import com.mongodb.client.Facet;
+    /*
+    A aggregation using facets
+    db.movies.aggregate([
+        { "$match" : { "countries" : "Portugal" } },
+        { "$facet" : {
+            "cast_members" : [{ "$unwind" : "$cast" }, { "$group" : { "_id" : "", "cast_list" : { "$addToSet" : "$cast" } } }],
+            "genres_count" : [{ "$unwind" : "$genres" }, { "$sortByCount" : "$genres" }],
+            "year_bucket" : [{ "$bucketAuto" : { "groupBy" : "$year", "buckets" : 10 } }]
+            }
+        }
+      ])
+     */
+
+     List<Bson> pipeline = new ArrayList<>();
+
+     // match stage
+    Bson matchStage = Aggregates.match(Filters.eq("countries", "Portugal"));
+
+    /*
+    For each facet we are going to create a com.mongodb.client.Facet object.
+     */
+
+    // $unwind the cast array
+    Bson unwindCast = Aggregates.unwind("$cast");
+    // create a set of cast members with $group
+    Bson groupCastSet = Aggregates.group("", Accumulators.addToSet("cast_list", "$cast"));
+    // Facet constructor takes a facet name and variable arguments representing the sub-pipeline stages
+    Facet castMembersFacet = new Facet("cast_members", unwindCast, groupCastSet)
+
+    // create a genres count facet
+    // unwind genres
+    Bson unwindGenres = Aggregates.unwind("$genres");
+    // genres facet bucket
+    Bson genresSortByCount = Aggregates.sortByCount("$genres");
+    Facet genresCountFacet = new Facet("genres_count", unwindGenres, genresSortByCount);
+
+    // year bucket facet
+    // year bucketAuto
+    Bson yearBucketStage = Aggregates.bucketAuto("$year", 10);
+    Facet yearBucketFacet = new Facet("year_bucket", yearBucketStage);
+
+    // $facets stage
+    Bson facetsStage = Aggregates.facet(castMembersFacet, genresCountFacet, yearBucketFacet);
+
+    // putting it all together
+    pipeline.add(matchStage);
+    pipeline.add(facetsStage);
+
+    AggregateIterable<Document> iterable = moviesCollection.aggregate(pipeline)
+    ```
+
+### Sumary
+
+- Aggregation framework pipelines are composed of lists of Bson stage
+document objects
+- Use the driver Aggregates builder class to compose the different stages
+- Use Accumulators, Sorts and Filters builders to compose the different
+stages expressions
+- Complex aggregation stages can imply several different sub-pipelines
+and stage arguments.
