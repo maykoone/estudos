@@ -636,3 +636,47 @@ in this case we can specify a write with concern, the default is W1, that is the
     Document user = new Document("email", "email@email.com");
     usersCollection.withWriteConcern(WriteConcern.MAJORITY).insertOne(user);
     ```
+
+## Update Operators
+
+    ```java
+    import com.mongodb.client.model.Filters;
+    import com.mongodb.client.model.Updates;
+    MongoCollection<Document> artists = testDb.getCollection("artists");
+
+    // We can replace an entire document.
+    Document replaceBand = new Document();
+    replaceBand.append("title", "Gorillaz");
+
+    /*
+    ReplaceOne will not preserve existing fields not informed in the document,
+    in this case a document with only _id and title
+    will exist
+    */
+    artists.replaceOne(Filters.eq("_id", band1Id), replaceBand);
+
+    // When changing a field value in a single document it is best to use updateOne
+    // update only specific field using set
+    artists.updateOne(queryFilter, Updates.set("title", "Gorillaz"));
+    // use updateMany with set
+    artists.updateMany(Filters.eq("rating", 8), Updates.set("rating", 9));
+    // updateMany documents with the increment operator, increasing the
+    // rating value of every document which currently has a rating value of
+    // 8 by one.
+    artists.updateMany(Filters.eq("rating", 8), Updates.inc("rating", 1));
+    // update all documents that possess the "rating" field by unsetting
+    // that field. unset removes the field from the document.
+    artists.updateMany(Filters.exists("rating"), Updates.unset("rating"));
+    ```
+
+### Summary
+
+* You can replace entire documents with replaceOne. This operation
+may cause you to lose data, so it isn't recommended for situations
+when you need a simple update.
+* You can update a value in a single document using the updateOne and
+set or inc operators.
+* You can update multiple documents that match your query using
+updateMany in conjunction with set or inc operations.
+* You can completely remove a field from a document by using
+updateOne or updateMany with the unset operation.
