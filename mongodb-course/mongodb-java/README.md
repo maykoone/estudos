@@ -485,33 +485,33 @@ and stage arguments.
 
 ## Cursor Methods and Aggregation Equivalents
 
-    ```java
-    Bson queryFilter = Filters.eq("directors", "Sam Raimi");
+```java
+Bson queryFilter = Filters.eq("directors", "Sam Raimi");
 
-    // we can append cursor methods in a find command
-    FindIterable<Document> findIterable =
-        moviesCollection.find(queryFilter).sort(Sorts.ascending("year")).skip(10).limit(2);
+// we can append cursor methods in a find command
+FindIterable<Document> findIterable =
+    moviesCollection.find(queryFilter).sort(Sorts.ascending("year")).skip(10).limit(2);
 
-    List<Document> findList = new ArrayList<>();
-    findIterable.into(findList);
+List<Document> findList = new ArrayList<>();
+findIterable.into(findList);
 
-    // And the equivalents in the aggregation
-    Bson matchStage = Aggregates.match(queryFilter);
-    Bson skipStage = Aggregates.skip(10);
-    Bson sortStage = Aggregates.sort(Sorts.ascending("year"));
-    Bson limitStage = Aggregates.limit(2);
+// And the equivalents in the aggregation
+Bson matchStage = Aggregates.match(queryFilter);
+Bson skipStage = Aggregates.skip(10);
+Bson sortStage = Aggregates.sort(Sorts.ascending("year"));
+Bson limitStage = Aggregates.limit(2);
 
-    // By running the proper order we will get the same list of results.
-    List<Bson> pipeline = new ArrayList<>();
+// By running the proper order we will get the same list of results.
+List<Bson> pipeline = new ArrayList<>();
 
-    pipeline.add(matchStage);
-    pipeline.add(sortStage);
-    pipeline.add(skipStage);
-    pipeline.add(limitStage);
+pipeline.add(matchStage);
+pipeline.add(sortStage);
+pipeline.add(skipStage);
+pipeline.add(limitStage);
 
-    List<Document> aggregationList = new ArrayList<>();
-    moviesCollection.aggregate(correctPipeline).into(aggregationList);
-    ```
+List<Document> aggregationList = new ArrayList<>();
+moviesCollection.aggregate(correctPipeline).into(aggregationList);
+```
 
 ### Summary
 
