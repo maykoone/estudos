@@ -653,20 +653,20 @@ ReplaceOne will not preserve existing fields not informed in the document,
 in this case a document with only _id and title
 will exist
 */
-artists.replaceOne(Filters.eq("_id", band1Id), replaceBand);
+UpdateResult updateResult artists.replaceOne(Filters.eq("_id", band1Id), replaceBand);
 
 // When changing a field value in a single document it is best to use updateOne
 // update only specific field using set
-artists.updateOne(queryFilter, Updates.set("title", "Gorillaz"));
+UpdateResult updateResult = artists.updateOne(queryFilter, Updates.set("title", "Gorillaz"));
 // use updateMany with set
-artists.updateMany(Filters.eq("rating", 8), Updates.set("rating", 9));
+UpdateResult updateResult = artists.updateMany(Filters.eq("rating", 8), Updates.set("rating", 9));
 // updateMany documents with the increment operator, increasing the
 // rating value of every document which currently has a rating value of
 // 8 by one.
-artists.updateMany(Filters.eq("rating", 8), Updates.inc("rating", 1));
+UpdateResult updateResult = artists.updateMany(Filters.eq("rating", 8), Updates.inc("rating", 1));
 // update all documents that possess the "rating" field by unsetting
 // that field. unset removes the field from the document.
-artists.updateMany(Filters.exists("rating"), Updates.unset("rating"));
+UpdateResult updateResult = artists.updateMany(Filters.exists("rating"), Updates.unset("rating"));
 ```
 
 ### Summary
@@ -680,3 +680,46 @@ set or inc operators.
 updateMany in conjunction with set or inc operations.
 * You can completely remove a field from a document by using
 updateOne or updateMany with the unset operation.
+
+## Basic Deletes
+
+- Delete One
+```java
+    // First I need to define a query predicate (or query filter)
+    Bson emptyQuery = new Document();
+    // in this case MongoDB will select the first $natural document
+    // it encounters in the collection and delete that one.
+    DeleteResult dResult = sports.deleteOne(emptyQuery);
+
+    // let's delete the first sport where the name field starts with string
+    // "bas"
+    Bson query = Filters.regex("name", "^bas");
+    DeleteResult dResult = sports.deleteOne(query);
+
+    // deleting the exact document we are looking for,
+    // the match should be done using the primary key of the document.
+    // Otherwise you will be deleting documents based on their initial
+    // insert/update order
+```
+
+- Delete Many
+
+```java
+    //MongoDB also allows to delete all documents that
+    // match a given criteria.
+    Bson criteria = Filters.exists("note");
+    // Running the deleteMany method with this criteria
+    DeleteResult dManyResult = sports.deleteMany(criteria);
+```
+
+- Find and Delete
+
+```java
+    // Comparing this with the
+    // deleteOne method, the difference will reside in
+    // what object is returned by the method.
+    Bson query = new Document("name", "table tennis");
+    // In the case of findAndDeleteOne, what
+    // we get back is the object that was just deleted
+    Document deletedSport = sports.findOneAndDelete(query);
+```
