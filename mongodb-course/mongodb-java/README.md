@@ -685,6 +685,7 @@ updateOne or updateMany with the unset operation.
 
 - Delete One
 ```java
+    MongoCollection<Document> sports = testDb.getCollection("sports");
     // First I need to define a query predicate (or query filter)
     Bson emptyQuery = new Document();
     // in this case MongoDB will select the first $natural document
@@ -722,4 +723,22 @@ updateOne or updateMany with the unset operation.
     // In the case of findAndDeleteOne, what
     // we get back is the object that was just deleted
     Document deletedSport = sports.findOneAndDelete(query);
+```
+
+## Read Concerns
+
+[Reference](https://docs.mongodb.com/manual/reference/read-concern/index.html)
+
+* The default read concern in MongoDB is "local"
+    * This does not check that data has been replicated
+* The read concern "majority" allows for more durable reads
+    * This only returns data that has been replicated to a majority of nodes
+
+```java
+    import com.mongodb.ReadConcern;
+
+    // example how to define read concern
+    commentCollection
+        .withReadConcern(ReadConcern.MAJORITY)
+        .aggregate(pipeline, Critic.class)
 ```
