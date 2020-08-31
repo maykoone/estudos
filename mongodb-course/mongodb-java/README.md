@@ -749,3 +749,63 @@ updateOne or updateMany with the unset operation.
 * Can either be ordered (default) or unordered
 
 [Reference](http://mongodb.github.io/mongo-java-driver/3.9/driver/tutorials/bulk-writes/)
+
+## Change Streams
+
+With [Change Streams](https://docs.mongodb.com/manual/changeStreams/index.html) you can watch all the write operations or select
+a more precise set of changes that you are looking to track in your
+database
+
+```java
+    MongoCollection<Document> comments = db.getCollection("comments");
+
+    //if we want to track the write changes to the collection we
+    // can use a `watch` method. This method activates Change Stream
+    // response
+    // Change streams allow us to express filters using the aggregation
+    // framework
+    List<Bson> insertFilter =
+        singletonList(Aggregates.match(Filters.in("operationType", "insert")));
+    ChangeStreamDocument<Document> stream = comments.watch(insertFilter)
+
+    /* 
+    * To track update events, first, change the filter from tracking insert operations to update
+    * ones, and to change it up, we now want to only see the odd ones.
+    *
+    * Then, specify that you are doing an update_lookup with fullDocument
+    * method in addition to watching. If we don't specify that we want the
+    * full document, then the change event will only contain the update
+    * object.
+    */
+    List<Bson> oddFilter =
+        singletonList(
+            Aggregates.match(
+                Filters.and(
+                    Document.parse("{'fullDocument.even': 0}"),
+                    Filters.eq("operationType", "update"))));
+    ChangeStreamDocument<Document> stream =
+        comments.watch(oddFilter).fullDocument(FullDocument.UPDATE_LOOKUP))
+```
+
+## Resiliency
+
+* Always use connection pooling
+* Always specify a wtimeout with majority writes
+* Always handle serverSelectionTimeout errors.
+
+```java
+    //we can pass configuration options in the connection string
+    // mongodb+srv://user:password@<YOUR_CLUSTER_HOSTS>/test?maxPoolSize=50&wtimeout=2500&connectTimeoutMS=2000
+    // or set in MongoClient
+    ConnectionString connString = new ConnectionString(connectionString);
+
+    WriteConcern wc = WriteConcern.MAJORITY.withWTimeout(2500, TimeUnit.MILLISECONDS);
+    MongoClientSettings settings =
+                MongoClientSettings.builder()
+                        .applyConnectionString(connString)
+                        .applyToConnectionPoolSettings(builder -> builder.maxSize(50))
+                        .applyToSocketSettings(builder -> builder.connectTimeout(2000, TimeUnit.MILLISECONDS))
+                        .writeConcern(wc)
+                        .build();
+    MongoClient mongoClient = MongoClients.create(settings);
+```
