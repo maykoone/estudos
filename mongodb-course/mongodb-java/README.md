@@ -742,3 +742,10 @@ updateOne or updateMany with the unset operation.
         .withReadConcern(ReadConcern.MAJORITY)
         .aggregate(pipeline, Critic.class)
 ```
+
+## Bulk Writes
+
+* Bulk writes allow database clients to send multiple writes
+* Can either be ordered (default) or unordered
+
+[Reference](http://mongodb.github.io/mongo-java-driver/3.9/driver/tutorials/bulk-writes/)
