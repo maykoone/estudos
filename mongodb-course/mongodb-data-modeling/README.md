@@ -263,4 +263,78 @@ There are two many-to-many representations
 * Prefer embedding for information that is primarily static over time and may profit from duplication
 * Prefer referencing over embedding to avoid managing duplication
 
+### One-to-One Relationships
+
+1. Embed
+    - fields at same level
+
+        ```javascript
+        // one use one shipping address
+        // users entities
+        {
+            _id: new ObjectId(),
+            name: string,
+            shipping_street: string,
+            shipping_city: string,
+            shipping_zip: string
+        }
+        ```
+    - grouping in sub-documents
+
+        ```javascript
+        // * preferred representation
+        // * preserves simplicity
+        // * documents are clearer
+        // users entities
+        {
+            _id: new ObejectId(),
+            name: string,
+            shipping_address: {
+                street: string,
+                city: string,
+                zip: string
+            }
+        }
+        ```
+2. Reference
+    - same identifier in both documents
+        - in the main `one` side
+        - in the secondary `one` side
+
+        ```javascript
+        //one store one store details
+        // * add complexity
+        // * possible performance improvements with:
+        //      * smaller disk access
+        //      * smaller amount of RAM needed
+        // * ensure that same identifier are unique in both collections
+        // stores entities
+        {
+            _id: ObjectId(),
+            storeId: string,
+            name: string
+        }
+        // store details
+        {
+            _id: ObjectId(),
+            storeId: string,
+            description: string,
+            staff: [
+                {
+                    name: string,
+                    address: string
+                }
+            ]
+        }
+        ```
+
+* Prefer embedding over referencing for simplicity
+* Use subdocuments to organize the fields
+* Use a reference for optimization purposes
+
+### One-to-Zillions
+
+* It is a particular case of the one-to-many relationships
+* The only available representation is to reference the document on the `one` side of the relationship from the `zillion` side
+* Pay extra attention to queries and code that handle `zillions` of documents.
 
