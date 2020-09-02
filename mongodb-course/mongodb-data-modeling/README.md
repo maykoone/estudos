@@ -70,7 +70,7 @@ The main trade that you will face is simplicity versus performance, prioritizing
 * one-to-zillions is useful in the Big Data World
 * even better, use "maximum" and "most likely" values using a tuple of the form: `[min, likely, max]`
 
-## One-To-Many Relationship
+### One-To-Many Relationship
 
 * There are a lot of choices: embed or reference, and choose the side between "one" and "many"
     1. Embed
@@ -173,3 +173,94 @@ The main trade that you will face is simplicity versus performance, prioritizing
 * Prefer embedding over referencing for simplicity, or when there is a small number of referenced documents as all related information is kept together
 * Embed on the side of most queried collection
 * Prefer referencing when the associated documents are not always needed with most often queried documents
+
+### Many-to-Many Relationships
+
+There are two many-to-many representations
+
+1. Embed
+    - array of subdocuments in the `many` side
+    - array of subdocuments in the other `many` side
+    - Usually, only the most queried side is considered
+
+        ```javascript
+        // many carts [10K] many items [0, 100K]
+        // an item may appear in many carts and carts may have many items
+        // * the documents from the less queried side are embedded
+        // * results in duplication
+        // * keep "source" for the embedded documents in another collectio
+        // * indexing is done on the array
+        // carts entities
+        {
+            _id: new ObjectId(),
+            date: date,
+            items: [
+                {
+                    _id: int,
+                    title: string,
+                    price: decimal
+                }
+            ]
+        }
+
+        // items entities
+        {
+            _id: new ObjectId(),
+            title: string,
+            price: decimal
+        }
+        ```
+2. Reference
+    - array of references in one `many` side
+
+        ```javascript
+        // many stores [1000] and many items [100K]
+        // * array of references to the documents of the other collection
+        // * references readily available upon first query on the "main" collection
+        // items entities
+        {
+            _id: new ObjectId(),
+            title: string,
+            price: decimal,
+            sold_at: ["store1", "store2", "store3"]
+        }
+
+        //stores entities
+        {
+            _id: new ObjectId(),
+            storeId: string,
+            name: string
+        }
+        ```
+    - array of references in the other `many` side
+
+        ```javascript
+        // reference in the secondary side
+        // * array of references to the documents of the other collection
+        // * need a secondary query to get more information
+        // items entities
+        {
+            _id: new ObjectId(),
+            title: string,
+            price: decimal
+        }
+
+        //stores entities
+        {
+            _id: new ObjectId(),
+            storeId: string,
+            name: string,
+            items_sold: [
+                "item1", "item2", "item3"
+            ]
+        }
+        ```
+    - It is possible to have arrays of references in both collections, however, it is not necessary and creates unnecessary overhead.
+
+* Ensure it is a "many-to-many" relationship that should not be simplified
+* A "many-to-many" relationship can be replaced by two "one-to-many" relationships but does not have to with the document model
+* Prefer embedding on the most queried side
+* Prefer embedding for information that is primarily static over time and may profit from duplication
+* Prefer referencing over embedding to avoid managing duplication
+
+
