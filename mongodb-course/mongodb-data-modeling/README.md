@@ -338,3 +338,148 @@ There are two many-to-many representations
 * The only available representation is to reference the document on the `one` side of the relationship from the `zillion` side
 * Pay extra attention to queries and code that handle `zillions` of documents.
 
+## Patterns
+
+- Many patterns lead to some situations that would require some additional actions.
+    * Duplicating data across documents.
+        * Resolve with bulk updates
+    * Accepting staleness in some pieces of data
+        * Resolve with updates based on [change streams](https://docs.mongodb.com/manual/changeStreams/)
+    * Write extra application side logic to ensure referencial integrity
+        * Resolve or prevent the inconsistencies with change streams or transactions
+
+### Attribute Pattern
+
+- Problem
+    * Lots of similar field
+    * Want to search across many fields at once
+    * Fields present in only a small subset of documents
+- Solution
+    * Break the field/value into sub-document with:
+        * fieldA:field
+    * Example:
+
+        ```javascript
+        // this
+        {"color": "blue", "size": "large"}
+        // becomes
+        {
+            [
+                {"k": "color", "v": "blue"},
+                {"k": "size", "v": "large"}
+            ]
+        }
+        ```
+- Benefits and Trade-Offs
+    * Easier to index
+    * Allow for non-deterministic field names
+    * Ability to qualify the relationship of the original field an value
+- Use Cases Examples
+    * Characteristics of a product
+
+        ```javascript
+        // products collections
+        // Collection with polimorphic documents
+        // We have commons fields across a majority of documents (brand, price, etc..).
+        // Then we have commons fields across many documents (color, size), 
+        // these fields may have different meanings for the different products.
+        // Then we have a set list of fields that are not going to exist in all products. 
+        {
+            description: "Cherry Coke 6-pack",
+            manufacturer: "Coca-Cola",
+            brand: "Coke",
+            price: 5.99,
+            ...
+            color: "red",
+            size: "12 ounces",
+            ...
+            container: "can",
+            sweetener: "sugar"
+        },
+        {
+            description: "Evian 500ml",
+            manufacturer: "Danone",
+            brand: "Evian",
+            price: 1.99,
+            ...
+            size: "500 ml",
+            ...
+            container: "plastic bottle"
+        },
+        {
+            description: "Charger",
+            manufacturer: "China",
+            brand: "MongoDB",
+            price: 0,
+            ...
+            color: "black",
+            size: "100 x 70 x 10 mm",
+            ...
+            input: "5V/1300 mA",
+            output: "5V/1A",
+            capacity: "5000 mAh"
+        }
+
+        /*
+        To search effectively on one of those field that are not going to exist in all products, we'll
+        an index. If you have tons of fields, you may have a lot of indexes.
+        */
+        db.products.find({"capacity": {$gt: 4000}}) // index on capacity
+        db.products.find({"output": "5V"}) // index on output
+
+        /*
+        For this case you want to use attribute pattern.
+        First we identify the list of fields to tranpose (in our case, "input", "output", "capacity"),
+        Then for each field in associated value we create that pair. (The name of the keys for those pairs do not matter, let's use K for key and V for value)
+        */
+        {
+            description: "Charger",
+            manufacturer: "China",
+            brand: "MongoDB",
+            price: 0,
+            ...
+            color: "black",
+            size: "100 x 70 x 10 mm",
+            ...
+            add_specs: [
+                {k: "input", v: "5V/1300 mA"},
+                {k: "output", v: "5V/1A"},
+                {k: "capacity", v: "5000 mAh"}
+            ]
+        }
+
+        // The last thing to do is to create an index
+        db.products.createIndex({"add_specs.k":1, "add_specs.v":1})
+        db.products.find({"add_specs": {$elemMatch: {k: "capacity", v: "5000 mAh"}}})
+        ```
+    * Set of fields all having same value type
+
+        ```javascript
+        // movies collections
+        {
+            title: "Dunkirk",
+            ...
+            release_USA: "2017/07/23",
+            release_Mexico: "2017/08/01",
+            release_France: "2017/08/01
+        }
+
+        // What if we want to find all the movies released between two dates across all countries?
+        // Spoiler: a very complex query!!
+
+        // Applying Attribute pattern
+        {
+            title: "Durkirk",
+            ...
+            releases: [
+                {k: "release_USA", v: "2017/07/23"},
+                {k: "release_Mexico", v: "2017/08/01"},
+                {k: "release_France", v: "2017/08/01"},
+            ]
+        }
+
+        //now issue the following simple query (using the date as string to illustrate the example)
+        db.movies.find({"releases.v":{$gte:"2017/07",$lt:"2017/08"}})
+        ```
+
+> With the release of the [Wildcard Index](https://docs.mongodb.com/manual/core/index-wildcard/) functionality in MongoDB 4.2, some use cases of the Attribute Pattern can be replaced by this new index type.
