@@ -553,3 +553,81 @@ There are two many-to-many representations
         ```
 
 > The extended reference pattern will work best if you select fields that do not change often.
+
+### Subset Pattern
+
+- Problem
+    * Working set is too big to fit in memory
+    * Lot of pages are evicted from memory
+    * A large part of documents is rarely needed
+- Solution
+    * Split the collection in 2 collections
+        * Most used part of documents
+        * Less used part of documents
+    * Duplicate part of a 1-N or N-N relationship that is often used in the most used side
+- Benefits and Trade-Offs
+    * Smaller working set, as often used documents are smaller
+    * Shorter disk access for bringing in additional documents from the most used collection
+    * more round trips to the server
+    * A little more space used on disk
+- Use Cases Examples
+    * List of reviews for a product
+    * List of comments on an article
+    * list of actors in a movie
+
+        ```javascript
+        /*
+        Let's say we have a system that keeps a lot of movies in memory, and each of theses
+        movies is taking a fair amount of memory.
+        */
+        // movies collection
+        {
+            _id: "<objectId>",
+            title: "<string>",
+            ...,
+            complete_script: "<string>"
+            cast: [
+                ..., // [0, 1000]
+                {
+                    name: "<string>",
+                    role: "<string>",
+                }
+            ]
+        }
+
+        /* Maybe the are some information that we don't need to use that often in those documents.
+        For example, most of the time users want to see the top actors rather than all of them.
+        We could keep only 20 of the cast members. The rest of the information can go into a separate collection.
+        */
+        // movies collection
+        {
+          _id: "<objectId>",
+          title: "<string>",
+          ...,
+          complete_script: "<string>"
+          cast: [
+            ..., // [0, 20]
+            {
+              name: "<string>",
+              role: "<string>"
+            }
+          ]
+        }
+        // cast collections [0,1000]
+        {
+          name: "<string>",
+          role: "<string>"
+        }
+
+        /*
+          A field that has a one-to-one relationship, for example, the full script
+          could be moved to a new collection. And you could access this information
+          through the $lookup operator.
+        */
+        // movies_extra_info collection
+        {
+          movie_title: "<string>",
+          complete_script: "<string>",
+          ...
+        }
+        ```
