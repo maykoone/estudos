@@ -631,3 +631,70 @@ There are two many-to-many representations
           ...
         }
         ```
+
+### Computed Pattern
+
+- Problem
+  * Costly computation or manipulation of data
+  * Executed frequently on the same date, producing the same result
+- Solution
+  * Performe the operation and store the result in the appropriate document and collection
+  * If need to redo the operations, keep the source of them
+- Benefits and Trade-Offs
+  * Read queries are faster
+  * Saving on resources like CPU and Disk
+  * May be difficult to identify the need
+  * Avoid applying or overusing it unless needed
+- Use Cases Examples
+  * Internet of Things
+  * Event sourcing
+  * Time series Data
+  * Frequent Aggregation Framework queries
+
+    ```javascript
+    /* Let's say we have a write operation
+    that comes in. This piece of data is added as a document to a given
+    collection. */
+
+    // screenings
+    {
+      _id: "<objectId>",
+      theather: "Cinema 1",
+      movie_title: "Matrix",
+      num_viewers: "123"
+      revenue: "5300"
+    },
+    {
+      _id: "<objectId>",
+      theather: "Cinema 2",
+      movie_title: "Matrix",
+      num_viewers: "203"
+      revenue: "7300"
+    },
+    {
+      _id: "<objectId>",
+      theather: "Cinema 3",
+      movie_title: "Matrix",
+      num_viewers: "65"
+      revenue: "1300"
+    }
+
+    /*Another part of the application reads this collection and does a sum on the numbers.
+    If we are doing 1000 times more reads than writes, the sum operation we do with those reads
+    is identifical and very often does the exact same calculation.
+    */
+
+    // sum operation
+    {
+      movie_title: "Matrix",
+      num_viewers: "391"
+      revenue: "13900"
+    },
+
+    /*By calculating the results when get a new piece of data, we read the other elements for
+    the sum and store the result in another collection with documents more appropriate to keep
+    the sum for that element, maybe in a background job at regular intervals.
+    This results in much fewer computation in the system
+    and also reduce the amount of data being read.
+    */
+    ```
