@@ -483,3 +483,73 @@ There are two many-to-many representations
         ```
 
 > With the release of the [Wildcard Index](https://docs.mongodb.com/manual/core/index-wildcard/) functionality in MongoDB 4.2, some use cases of the Attribute Pattern can be replaced by this new index type.
+
+### Extended Reference Pattern
+
+- Problem
+    * Too many repetitive joins
+- Solution
+    * Avoid a Join (`$lookup`) by embedding the joined table
+    * Identify fields on the lookup side
+    * Bring those fields into the main object
+- Benefits and Trade-Offs
+    * Faster reads
+    * Reduce number of joins and lookups
+    * May introduce lots of duplication if extended reference contais fields that mutate a lot
+- Use cases
+    * Catalog
+    * Mobile Applications
+    * Real-Time Analytics
+    * Many-to-One relationships
+
+        ```javascript
+        // One customer can have many orders, and one order belongs to one customer
+        // custormers collection
+        {
+            _id: "<objectId>",
+            customer_id: "<string>"
+            street: "<string>",
+            city: "<string>",
+            country: "<string>"
+        }
+        // orders collection
+        {
+            _id: "<objectId>",
+            order_id: "<string>",
+            customer_id: "<string>"
+        }
+        
+
+        /* Let's say that our application focus is on order management and fullfilment.
+        And we will query for specific orders way more often than query all the orders
+        for a given custormer. For a given order we will need the shipping address information
+        from the one side of the relationship, in this case, the customers, and we will
+        need to perform a join most of the time.
+
+        The prefered way to do this is only to copy the fields you need to access frequently,
+        leaving the rest of the information in the source collection. We built an extended
+        reference, meaning the reference is rich enough, that we will not need to perform
+        the join most of the time 
+        */
+        // custormers collection
+        {
+            _id: "<objectId>",
+            customer_id: "<string>"
+            street: "<string>",
+            city: "<string>",
+            country: "<string>"
+        }
+        // orders collection
+        {
+            _id: "<objectId>",
+            order_id: "<string>",
+            customer_id: "<string>",
+            shipping_address: {
+                street: "<string>",
+                city: "<string>",
+                country: "<string>"
+            }
+        }
+        ```
+
+> The extended reference pattern will work best if you select fields that do not change often.
