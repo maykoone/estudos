@@ -698,3 +698,126 @@ There are two many-to-many representations
     and also reduce the amount of data being read.
     */
     ```
+
+### Bucket Pattern
+
+- Problem
+  * Avoiding too many documents, or too big documents
+  * A 1-to-Many relantionships that can't be embedded
+- Solution
+  * Define the optimal amount of information to group together
+  * Create arrays to store the information in the main object
+  * It is basically an embedded 1-to-Many relationship, where you get N documents,
+  each having an average of Many sub documents
+- Benefits and Trade-Offs
+  * Good balance between number of data access and size of data returned
+  * Makes data more manageable
+  * Easy to prune data
+  * Can lead to poor query results in not designed correctly
+  * Less friendly to BI tools
+- Use Cases Examples
+  * Internet of Things
+
+    ```javascript
+    /* Let's say we have 10 million temperature sensors, 
+    and each sensor is sending us a piece of data every minute.
+
+    Trying to store each piece in a document may not work as we get
+    too many documents to manage. On the other end, if we keep
+    one document per device, each document is likely to reach
+    the maximum size of 16 MB after a while.
+
+    One suggestion is to have one document per device, per day.
+    Each document would only carry information for a single device on 
+    a single day.
+    */
+
+    // One document per device per day
+    {
+      device_id: 000123456,
+      type: "2A",
+      date: ISODate("2018-03-02"),
+      temp: [ //one array per hour
+        [20.0, 20.1, 20.2, ...],
+        [22.0, 22.1, 22.2, ...]
+      ]
+    },
+    {
+      device_id: 000123456,
+      type: "2A",
+      date: ISODate("2018-03-03"), // another day
+      temp: [ //one array per hour
+        [20.0, 20.1, 20.2, ...],
+        [22.0, 22.1, 22.2, ...]
+      ]
+    }
+
+    .// Another option is to have one document per device, per hour.
+    {
+      device_id: 000123456,
+      type: "2A",
+      date: ISODate("2018-03-02T13"),
+      temp: { 1: 20.0, 2: 20.1, 3: 20.2, ...}
+    }
+    {
+      device_id: 000123456,
+      type: "2A",
+      date: ISODate("2018-03-02T14"), //another hour
+      temp: { 1: 20.0, 2: 20.1, 3: 20.2, ...}
+    }
+    ```
+  * Data Warehouse
+  * Lots of information associated to one object
+
+### Schema Versioning Pattern
+
+- Problem
+  * Avoid downtime while doing schema updagrades
+  * Upgrading all documents can take hours, days or even weeks when dealing with big data
+  * Don't want to update all documents
+- Solution
+  * Each document gets as `schema_version` field
+  * Application can handle all versions
+  * Choose your strategy to migrate the documents
+- Benefits and Trande-Offs
+  * No downtime needed
+  * Feel in control of the migration
+  * Less future technical debt
+  * May need 2 indexes for same field while in migration periodo
+- Use Cases Examples
+  * Every application that use a database, deployed in production and heavily used.
+  * System with a lot of legacy data
+
+  ```javascript
+  /* Let's say we have a peoples collections like this:
+  */
+  {
+    _id: "<objectId>",
+    firstname: "<string>",
+    lastname: "<string>",
+    cellphone: "<string>",
+    workphone: "<string>",
+    skype: "<string>",
+    email:  "<string>"
+  }
+
+  /* So instead of growing the documents with unpredictable contact methods,
+  the attribute pattern is applied.
+
+  New documents get writter n the latest shape. For existing documents we will
+  need to make an update to change the shape and the two shapes may coexist during the migration.
+  To help the application identify the shape we will have a version
+  field.
+  */
+
+  {
+    _id: "<objectId>",
+    schema_version: 2,
+    firstname: "<string>",
+    lastname: "<string>",
+    contacts: [
+      { methods: "<string>", value: "<string>"}
+    ]
+  }
+
+  ```
