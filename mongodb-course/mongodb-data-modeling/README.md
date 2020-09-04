@@ -819,5 +819,136 @@ There are two many-to-many representations
       { methods: "<string>", value: "<string>"}
     ]
   }
-
   ```
+
+### Tree Patterns
+
+- Problem
+  * Representation of hierarchical structured data
+  * Different access patterns to navigate the tree
+  * Provide optimized model for common operations
+- Solution
+  * Child Reference
+  * Parent Reference
+  * Array of Ancestors
+  * Materialized Paths
+- Benefits and Trade-Offs
+  * Child Reference
+    * Easy to navigate to children nodes or thee descending access patterns
+  * Parent Reference
+    * Immediate parent node discovery and tree updates
+  * Array of Ancestors
+    * Navigate upwards on the ancestors path
+  * Materialized Path
+    * Makes use of regular expressions to find nodes in the tree
+- Use Cases Examples
+  * Org Charts
+  * Product Categories
+
+    ```javascript
+    // product categories
+    // Parent Reference
+    {
+      ...,
+      name: "Office",
+      parent: "Swag",
+      ...
+    }
+
+    // Child reference
+    {
+      ...,
+      name: "Office",
+      children: ["Books", "Eletronics", "Stickers"]
+    }
+
+    // Array of Ancestors
+    {
+      name: "Books",
+      ancestors: ["Swag", "Office"]
+    }
+
+    // Materialized Paths
+    {
+      name: "Books"
+      ancestors: ".Swag.Office"
+    }
+
+    // Ancestors Array + Parent Reference
+    {
+      name: "Umbrellas",
+      parent: "Fashion",
+      ancestors: ["Swag", "Fashion"]
+    }
+    ```
+
+> * `$graphLookup` may be useful to query the tree structure
+> * Focus on the most common queries and operations to select the most effective tree pattern
+
+### Polymorphic Pattern
+
+- Problem
+  * Objects more similar than different
+  * Want to keep objects in same collection
+- Solution
+  * Field tracks the type of document or sub-document
+  * Application has different code paths per document type or has subclasses
+- Benefits and Trade-Offs
+  * Easier to implement
+  * Allow to query across a single collection
+- Use Cases Examples
+  * Single View
+  * Product Catalog
+
+    ```javascript
+    // Products
+    {
+      product_type: "shirt", //type of the document
+      color: "blue",
+      size: "large",
+      price: "100.00"
+    }
+
+    {
+      product_type: "book",
+      title: "Le Petit Price",
+      size: "20cm x 15cm x 1cm",
+      price: "10.00"
+    }
+    ```
+  * Content Management
+
+### Approximation Pattern
+
+- Problem
+  * Data is expensive to calculate
+  * It does not matter if the number is not precise
+- Solution
+  * Fewer, but writes with higher payload
+- Benefits and Trade-Offs
+  * Less writes
+  * Less contention on documents
+  * Statistically valid numbers
+  * Not exact numbers
+  * Must be implemented in the application
+- Use Cases examples
+  * Web page counters
+  * Any counters with tolerance to imprecision
+  * Metrics statistics
+
+### Outlier Patterns
+
+- Problem
+  * Few documents would drive the solution
+  * Impact would be negative on the majority of queries
+- Solution
+  * Implementation that works for majority
+  * Field identifies outliers as exception
+  * Outliers are handle differently on the application side
+- Benefits and Trade-Offs
+  * Optimized solution for most use cases
+  * Differences handled application side
+  * Difficult for aggregation or ad hoc queries
+- Use Cases Examples
+  * Social Networks
+  * Popularity
