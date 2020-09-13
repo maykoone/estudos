@@ -170,3 +170,60 @@ exp = db.people.explain("executionStats")
 exp = db.people.explain("allPlansExecution")
 
 ```
+
+### Sorting with Single Field Indexes
+
+* Documents can be sorted in memory or by using and index.
+* Sorting a large amount of documents in memory might be an expensive operation.
+* The server is going to abort sorting in memory when 32 MB of memory is being used.
+* In an index, the keys are ordered according to the field specified during index creation. The server can tak advantage of this via sort.
+* If a query is using an index scan, the order of the documents returned is guaranteed to be sorted by the index keys.
+* It's important to point out that the documents are only going to be ordered according to the fields that make up the index.
+* We can sort the documents either ascending or descending, regardless of the physical ordering of the index keys.
+
+### Compound Indexes
+
+* A compound index is an index on two or more fields
+
+  ```javascript
+  db.people.createIndex({ last_name: 1, first_name: 1})
+  ```
+* The field or fields that come first are in some ways more useful than the fields that come later
+
+### Compound Indexes: Prefixes
+
+* An index prefix is a continuous subset of our compound index that starts to the left-hand side an it has to be continuous
+* An index prefix can be used just like a regular index
+* The query planner will ignore the other parts of the index and will use the prefix to find your documents
+* So let's consider the following compound index
+
+  ```javascript
+  db.people.createIndex({ job: 1, last_name: 1, first_name: 1})
+  ```
+
+* It has the following index prefixes:
+  * `{ job: 1 }`
+  * `{ job: 1, last_name: 1}`
+  * `{ job: 1, last_name: 1, first_name: 1}`
+* if we have a compound index, it can serve as query use for both the compound and any of its prefixes, but it won't use an index when we're not querying on a prefix.
+* There's no point in building two indexes when you can have everything with just one index
+
+### Sorting with Compound Indexes
+
+* We can use compound indexes for sorting by using index key pattern as our sort predicate
+* So let's consider our previous `job_last_name_first_name` index. It can support the following sort operations
+  * `db.people.find({}).sort({ job: 1 })`
+  * `db.people.find({}).sort({ job: -1 })`
+  * `db.people.find({}).sort({ job: 1, last_name: 1 })`
+  * `db.people.find({}).sort({ job: -1, last_name: -1 })`
+  * `db.people.find({}).sort({ job: 1, last_name: 1, first_name: 1 })`
+  * `db.people.find({}).sort({ job: -1, last_name: -1, first_name: -1 })`
+* However it cannot support the following sort operations
+  * `db.people.find({}).sort({ job: 1, last_name: -1 })`
+  * `db.people.find({}).sort({ job: -1, last_name: 1, first_name: -1 })`
+* In order to walk the index backwards all we need to do is invert each key
+* We can filter and sort our queries by splitting up our index prefix between the query and sort predicates
+
+  ```javascript
+  db.people.find({job:"Financial adviser"}).sort({job:1, last_name: 1})
+  ```
