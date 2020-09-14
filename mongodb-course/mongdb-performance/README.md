@@ -227,3 +227,145 @@ exp = db.people.explain("allPlansExecution")
   ```javascript
   db.people.find({job:"Financial adviser"}).sort({job:1, last_name: 1})
   ```
+
+### Multikey indexes
+
+* When we index on a field that is an array, this is what we call a multikey index.
+* Each entry in the array, the server will create a separate index key
+* We can also index on nested documents
+* We want to be careful with creating multikey indexes because we want to make sure that our arrays don't grow too large
+* MongoDB only recognizes that an index is multikey when a document is inserted where that field is in an array
+* If we try to create an index where both fields are arrays, then this should fail
+* We can still create compound multikey index when only one field is an array
+
+### Partial Indexes
+
+* We can index only a portion of the documents in a collection
+
+  ```javascript
+  db.collection.createIndex(
+    { field: <1 or -1>, },
+    { partialFilterExpression: <expression>})
+
+  // example
+  db.restaurants.createIndex(
+   { cuisine: 1, name: 1 },
+   { partialFilterExpression: { rating: { $gt: 5 } } }
+  )
+  ```
+* When we create a partial index, we're effectively reducing the number of index keys that we need to store.
+* Partial indexes can also be useful multikey indexes
+* sparse indexes are a special case of partial indexes. With a sparse index, we only index documents where the field exists, rathen than creating an index key with a null value
+
+  ```javascript
+  db.restaurants.createIndex(
+    { stars: 1 },
+    { sparse: true }
+  )
+
+  //same as
+  db.restaurants.createIndex(
+    { stars: 1 },
+    { partialFilterExpression: { stars: { $exists: true } } }
+  )
+  ```
+* In order to use a partial index, the query must be guaranteed to match a subset of the documents, specfied by the filter expression.
+
+  ```javascript
+  db.restaurants.createIndex(
+    { stars: 1},
+    { partialFilterExpression: { stars: { $gt: 3.5 }}}
+  )
+
+  db.restaurants.find({'address.city': 'New York', stars: { $gt: 4.0 }})
+  ```
+* `_id` indexes cannot be partial indexes
+* Shard key indexes cannot be partial indexes
+
+### Text Indexes
+
+* For certain use cases, it can be useful to search for documents based on the words that are a part of those text fields
+* We can leverage MongoDB's full text search capabilities, while avoiding collections scans.
+* Rather than specifying that we want our indexes to be ascending or descending, rather we pass a special text keyword to `createIndex`
+
+  ```javascript
+  db.collection.createIndex({ field: "text" })
+  ```
+* MongoDB is going to process the text field and create an index key for every unique word in the string
+* By default, text indexes are case insensitive
+* We want to be aware that the bigger our text fields are, the more index keys per document we'll be producing. We'll want to watch very closely how big our index is getting to make sure that it fits entirely in RAM
+* Text indexes it's going to take longer than normal to build and we'll also see a more significant decrease in write perfomance, than with a typical index.
+* One strategy for reducing the number of index keys that need to be examined, would be to create a compound text index.
+
+  ```javascript
+  db.products.createIndex({ category: 1, productName: "text" })
+  ```
+* We use `$text` and `$search` operators to search using text indexes
+
+  ```javascript
+  db.products.find({
+    category: "Clothing",
+    $text: { $search: "t-shirt" }
+  })
+  ```
+* The `$text` operator assigns a score to each document, based on the relevance of that document for a given search. We can project the special `textScore` value to our returned results
+
+  ```javascript
+  db.products.find({
+    category: "Clothing",
+    $text: { $search: "t-shirt" }
+  },
+  {
+    score: { $meta: "textScore" }
+  })
+  ```
+
+### Collations
+
+* Collations allow users to specify language specific rules for string comparison
+* There are multiple different settings that collations allow
+* Collations can be defined at several different levels.
+
+  ```javascript
+  // we can define a collation for a collection
+  db.createCollection("my_collection", { collation: { locale: "pt" }})
+
+  // we can use collations for specific requests
+  db.my_collection.find({_id: {$exists: true}}).collation({locale: 'it'})
+  db.my_collection.aggregate([ {$match: {_id: {$exists: true}}}], {collation: {locale: 'es'}})
+
+  // we can specify different collations for our indexes
+  db.my_collection.createIndex( {name: 1 }, {collation: {locale: 'it' }})
+  ```
+* To use an index with a specific collation, the query must match the collation of the index
+
+  ```javascript
+  db.people.createIndex( {name: 1}, {collation: {locale: 'it' }})
+
+  //we're only able to use that index when specify the same collation in the query
+  db.people.find({name: 'Leonardo'}).collation({locale: 'it'})
+  ```
+
+### Wildcard Indexes
+
+* Wildcard indexes allow you to dynamically create indexes on all fields or a selected subset of fields for each document in a collection
+* Some workloads have unpredictable access patterns. This can make it very difficult to plan an effective indexing strategy
+* We need able to index on multiple fields without the overhead of maintaining multiple indexes
+* If we use a wildcard index, we can assume that certain indexes exists without the need to manually create them
+* Wildcard indexes are not a replacement for traditional indexes
+* We can index all fields in a collection or use dot notation and wildcard projections to index a subset of fields in each document
+* Syntax
+
+  ```javascript
+  // index everything
+  db.data.createIndex({'$**': 1})
+
+  // index 'a.b' and all subpaths
+  db.data.createIndex({'a.b.$**': 1})
+
+  // index 'a' and all subpaths
+  db.data.createIndex({'$**': 1}, {wildcardProjection: {a: 1}})
+
+  // index everything but 'a'
+  db.data.createIndex({'$**': 1}, {wildcardProjection: {a: 0}})
+  ```
