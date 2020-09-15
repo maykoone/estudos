@@ -369,3 +369,203 @@ exp = db.people.explain("allPlansExecution")
   // index everything but 'a'
   db.data.createIndex({'$**': 1}, {wildcardProjection: {a: 0}})
   ```
+
+### Forcing Indexes with Hing
+
+* Overriding MongoDB's default index selection with `hint()`
+
+  ```javascript
+  //hint with index shape
+  db.people
+    .find({name: "John Doe", zipcode: {$gt:"6300"}})
+    .hint({name: 1, zipcode: 1})
+
+  //hint with index name
+  db.people
+    .find({name: "John Doe", zipcode: {$gt:"6300"}})
+    .hint("name_1_zipcode_1")
+  ```
+
+### Resource Allocation for Indexes
+
+* Determine Index Size
+  * Using MongoDB Compass
+  * CLI
+
+    ```shell
+    > db.stats()
+    > db.my_collection.stats()
+    ```
+* Memory Allocation and Caches
+
+  ```shell
+  > db.my_collection.stats({indexDetails:true})
+  ```
+
+### Optimizing your CURD Operations
+
+* Index Selectivity
+  * We want to make sure that the most selective fields are first
+* Equality, Sort, Range
+  * Is a really greate rule for determine how we should order our index fields
+
+    ```javascript
+    // At the beginning of our index, we should match on equality conditions in the query predicate,
+    // followed by sort conditions, and finally range conditions.
+    // given the following query
+    db.restaurants.find(
+      {
+        "address.zipcode": {$gt: '50000'}, //range
+        cuisine: 'Sushi' //equality
+      }
+    )
+    .sort({ stars: -1 }) //sort
+
+    /* We can use this phrase equality, sort, range 
+    when building our indexes to determine the way
+    to service our queries */
+    db.restaurants.createIndex(
+      {
+        cuisine: 1, //equality
+        stars: 1, //sort
+        "address.zipcode": 1 //range
+      }
+    )
+    ```
+* Performance trade-offs
+  * Sometimes it makes sense to be a little bit less selective, to prevent an in-memory sort because in the end our execution time will be the lowest
+
+### Covered Queries
+
+* Covered Queries are a highly perfomant way to service the queries to our database, because they're completely satisfied by our index keys
+* When the index contains all the fields required by the results of our query, MongoDB can both match the query conditions and return the results only using the index
+
+  ```javascript
+  db.restaurants.createIndex({name: 1, cuisine: 1, stars: 1})
+  
+  // In our query we're projecting only the fields used by the index
+  db.restaurants.find(
+    {name: {$gt: 'L'}, cuisine: 'Sushi', stars: {$gt: 4.0}},
+    {_id: 0, name: 1, cuisine: 1, stars: 1} //All these values exist directly on the index
+  )
+
+  /* If we run the explain for this query we can see
+  that "totalDocsExamined" is equal to 0 and we completely
+  skipped the fetch stage
+  */
+  ```
+* We cannot cover a query if
+  * Any of the indexed fields are arrays
+  * Any of the indexed fields are embedded documents
+  * When run against a mongos if the index does not contain the shard key
+
+### Aggregation Performance
+
+* Try to ensure that the aggregation pipeline uses indexes as much as possible
+* When the server encounters a stage that is not able to use indexes, all of the following stages will no longer be able to use indexes either
+* The query optimizer will try detect when a stage can be moved forward so indexes can be utilized
+* Use `explain: true` to determine how aggregation queries are executed and whether or not indexes are being utilized
+
+  ```javascript
+  db.collection.aggregate([
+    { $stage1 },
+    ...
+    { $stageN }
+  ], {explain: true})
+  ```
+
+* Try to use operators that use indexes at the front of the pipeline (eg. `$match`, `$sort`)
+* If you're doing a limit and a sort, make sure that they're near each other and closest to the front of the pipeline, so the server will be able to do a top-k sort and only allocate memory for the final number of documents.
+
+  ```javascript
+  db.collection.aggregation([
+    { $match: <predicate> },
+    { $limit: 10 }
+    { $sort: <predicate> }
+  ])
+  ```
+
+* The aggregation results are subject to 16MB document limit and 100MB of RAM usage per stage. Use `$limit` and `$project` to reduce the resulting document size.
+* It's possible to specify `allowDiskUse` to get around these limits, but this will seriously decrease performance
+
+  ```javascript
+  db.collection.aggregate([
+    { $stage1 },
+    ...
+    { $stageN }
+  ], {allowDiskUse: true})
+  ```
+
+- Avoid unnecessary stages, Aggregation framework can project fields automatically if final shape of the output document can be determined from initial input
+- Use accumulator expression, `$map`, `$reduce` and `$filter` in project before an `$unwind`, if possible
+
+## Performance on Clusters
+
+* A distributed system in MongoDB includes both, Replica Clusters for high availability and Shard Clusters for horizontal scalability
+* in a distributed system we need to consider latency
+* Use replica sets in production environments
+* Shard Nodes are themselves replica sets
+* Before Sharding
+  * Have we reached the limits of our vertical scaling?
+  * You need to understand how your data grows and how your data is accessed
+  * Sharding works by defining key based ranges, our shard key
+  * It is important to get a good shard key
+* There are two types of reads that we can perform in a shard cluster
+  * Scattered Gathered: Where we ping all nodes of our shard cluster for the information corresponding to a given query
+  * Routed Queries: Where we ask one single shard node or a small amount of shard nodes for the data that your application is requesting
+* The difference between these two types of read will be based on if we are using the shard key on our queries or not.
+  * If we are not using the shard key we will be performing scattered gathered queries.
+  * To make effecient usage of our cluster data distribution we should use our shard key in our queries
+
+### Performance with Sharding
+
+* Picking a good shard key is the most important part of sharding
+* The shard key is either an index field or an index compound of fields that exist in every document
+* With a shard key, our data is divided up into bite size pieces called chunks
+* There are three key things to keep in mind when designing a shard key
+  * Cardinality
+    * Number of distinct values for a given shard key
+    * The cardinality of our shard key determines the maximum number of chunks that can exist in our cluster
+    * We want to ensure that our shard key has high cardinality
+    * We can increase the cardinality of our shard key by creating a compound shard key
+  * Frequency
+    * We want to make sure that there's an even distribution for each value for our shard key
+  * Rate of change
+    * Avoid monotonically increasing or decreasing values like `_id`
+    * It's ok to have a monotonically increasing value in your shard key, as long as it's not the first field
+* Bulk inserts
+  * With a shared cluster, ordered bulk writes can be an issue because we have to wait for the last operatio to complete before we can execute the next
+  * With unordered bulk write, we can execute all of our operations in parallel, maintaining the distributed befenefits that we get with a sharded cluster.
+
+## Reading from Secondaries
+
+* By default, the read preference is primary
+
+  ```javascript
+  db.people.find().readPref("primary")
+  ```
+* The are several other read preferences available to us. regarding reading from secondaries we have
+
+  ```javascript
+  // your read will be routed to one of the secondaries
+  db.people.find().readPref("secondary")
+
+  /* your reads will always be routed to a secondary 
+  unless there aren't any available, in which case your
+  reads will be routed to the primary*/
+  db.people.find().readPref("secondaryPreferred")
+
+  /* your reads will be routed to the member which has the lowest network latency */
+  db.people.find().readPref("nearest")
+  ```
+* When we read from a secondary node we're not guaranteed to be reading from the most up-to-date version of the data.
+* We should read from secondaries when doing ad-hoc queries and analytic jobs
+* Writes can only be routed to the primary node
+
+> Further reading
+> * [Query Plans](https://docs.mongodb.com/manual/core/query-plans/)
+> * [Building Indexes](https://docs.mongodb.com/manual/core/index-creation/)
+> * [Create Indexes to Support Your Queries](https://docs.mongodb.com/manual/tutorial/create-indexes-to-support-queries/)
+> * [Use Indexes to Sort Query Results](https://docs.mongodb.com/manual/tutorial/sort-results-with-indexes/)
+> * [Create Queries that Ensure Selectivity](https://docs.mongodb.com/manual/tutorial/create-queries-that-ensure-selectivity/)
+> * [Distributed Queries](https://docs.mongodb.com/manual/core/distributed-queries/)
